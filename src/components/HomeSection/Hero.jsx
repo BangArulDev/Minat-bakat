@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { ButtonLink } from "..";
 
 export default function Hero() {
   return (
@@ -54,21 +55,18 @@ export default function Hero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           {/* Tombol Utama */}
-          <Link 
-            href="/tes" 
-            className="group px-8 py-4 bg-gray-900 text-white rounded-full font-medium transition-all hover:bg-gray-800 hover:scale-105 flex items-center gap-2"
-          >
+          <ButtonLink href="/tes">
             Mulai Tes Sekarang
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </ButtonLink>
           
           {/* Tombol Kedua */}
-          <Link 
+          <ButtonLink
             href="/about" 
-            className="px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all hover:border-gray-300"
+            variant="outline"
           >
             Pelajari Lebih Lanjut
-          </Link>
+          </ButtonLink>
         </motion.div>
 
         {/* 6. Social Proof Kecil (Opsional - Biar lebih meyakinkan) */}

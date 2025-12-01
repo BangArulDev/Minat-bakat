@@ -8,9 +8,10 @@ export { default as FAQ } from "@/components/HomeSection/FAQ";
 export { default as Explorasi } from "@/components/HomeSection/Explorasi";
 
 // Layout
-export { default as Navbar } from "@/components/Layout/Navbar";
-export { default as Footer } from "@/components/Layout/Footer";
+export { default as Navbar } from "@/components/layout/Navbar";
+export { default as Footer } from "@/components/layout/Footer";
 
 // UI
 export { default as Button } from "@/components/ui/Button";
+export { default as ButtonLink } from "@/components/ui/ButtonLink";
 export { default as Card } from "@/components/ui/Card";

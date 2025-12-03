@@ -1,4 +1,4 @@
-import { About, Explorasi, FAQ, Hero, HowItWorks, RIASEC, Testimoni } from "@/components";
+import { About, Features, Hero, Price, Process } from "@/components";
 
 
 export default function Home() {
@@ -11,20 +11,9 @@ export default function Home() {
       {/* 2. About Section */}
       <About />
 
-      {/* 3. Cara Kerja */}
-      <HowItWorks />
+      <Features />
 
-      {/* 4. Tipe Kepribadian (RIASEC) */}
-      <RIASEC />
-
-      {/* 5. Testimoni */}
-      <Testimoni />
-
-      {/* 6. QnA / FAQ */}
-      <FAQ />
-
-      {/* 7. Explorasi Kampus/Karir */}
-      <Explorasi />
+      <Price />
 
     </main>
   );

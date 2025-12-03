@@ -2,114 +2,137 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, ChevronDown } from "lucide-react";
+import { ButtonLink } from "..";
+
+const NAV_LINKS = [
+  { name: "Home", href: "/" },
+  { name: "About", href: "/#about" },
+  { name: "Fitur", href: "/#fitur" },
+  { name: "Harga", href: "/#harga" },
+];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(true); // Status: Apakah navbar terlihat?
+  const [isVisible, setIsVisible] = useState(true);
 
-  // 1. Panggil "Mata-mata" Scroll
+  // Logika Scroll (Navbar hilang saat scroll ke bawah)
   const { scrollY } = useScroll();
-
-  // 2. Pasang logika pendeteksi arah scroll
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious();
-    
-    // Jika sedang buka menu di HP, jangan sembunyikan navbar
     if (isOpen) return;
-
     if (latest > previous && latest > 150) {
-      // Kalau scroll ke BAWAH dan sudah melewati 150px
-      setIsVisible(false); // Sembunyi!
+      setIsVisible(false);
     } else {
-      // Kalau scroll ke ATAS
-      setIsVisible(true); // Muncul!
+      setIsVisible(true);
     }
   });
 
-  const navLinks = [
-    { name: "Beranda", href: "/" },
-    { name: "Tes Minat", href: "/tes" },
-    { name: "Artikel", href: "/artikel" },
-    { name: "Tentang", href: "/tentang" },
-  ];
-
   return (
     <motion.nav
-      // 3. Ini Animasinya:
       variants={{
-        visible: { y: 0 },         // Posisi normal
-        hidden: { y: "-100%" },    // Geser ke atas sampai hilang
+        visible: { y: 0 },
+        hidden: { y: "-100%" },
       }}
-      animate={isVisible ? "visible" : "hidden"} // Berubah sesuai status
-      transition={{ duration: 0.35, ease: "easeInOut" }} // Kecepatan animasi
-      
+      animate={isVisible ? "visible" : "hidden"}
+      transition={{ duration: 0.35, ease: "easeInOut" }}
       className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100"
     >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         
-        {/* Logo Brand */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight text-gray-900">
-          <Sparkles className="w-5 h-5 text-blue-600" />
-          <span>Talenta<span className="text-blue-600">Ku</span></span>
+        {/* --- BAGIAN KIRI: LOGO --- */}
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-blue-200 shadow-lg group-hover:rotate-12 transition-transform duration-300">
+            <Sparkles size={20} />
+          </div>
+          <span className="font-bold text-xl tracking-tight text-gray-900">
+            Talenta<span className="text-blue-600">Ku</span>
+          </span>
         </Link>
 
-        {/* Menu Desktop */}
-        <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
+        {/* --- BAGIAN TENGAH: NAVIGASI DESKTOP --- */}
+        <div className="hidden lg:flex items-center gap-1">
+          {/* Link Biasa */}
+          {NAV_LINKS.map((link) => (
             <Link 
               key={link.name} 
               href={link.href}
-              className="text-sm font-medium text-gray-500 hover:text-black transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-all"
             >
               {link.name}
             </Link>
           ))}
-          <Link 
-            href="/login"
-            className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors"
-          >
-            Masuk
-          </Link>
         </div>
 
-        {/* Tombol Hamburger HP */}
+        {/* --- BAGIAN KANAN: TOMBOL LOGIN --- */}
+        <div className="hidden lg:flex items-center gap-4">
+           {/* Menggunakan ButtonLink yang sudah Anda buat */}
+           <Link href="/register" className="group px-8 py-3 rounded-full font-medium transition-all flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800">
+             Daftar
+           </Link>
+           <Link href="/login" className="group px-8 py-3 rounded-full font-medium transition-all flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300">
+             Masuk
+           </Link>
+        </div>
+
+        {/* --- TOMBOL HAMBURGER (MOBILE) --- */}
         <button 
-          className="md:hidden p-2 text-gray-600"
+          className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* Menu Mobile */}
+      {/* --- MENU MOBILE --- */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
+            className="lg:hidden bg-white border-b border-gray-100 overflow-hidden shadow-lg"
           >
-            <div className="flex flex-col px-6 py-4 gap-4">
-              {navLinks.map((link) => (
+            <div className="flex flex-col px-6 py-6 gap-2 max-h-[80vh] overflow-y-auto">
+              
+              {/* Mobile Links */}
+              {NAV_LINKS.map((link) => (
                 <Link 
                   key={link.name} 
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-600 font-medium hover:text-blue-600 block py-2"
+                  className="px-4 py-3 text-gray-600 font-medium hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                 >
                   {link.name}
                 </Link>
               ))}
-              <hr />
-              <Link 
-                href="/login"
-                onClick={() => setIsOpen(false)}
-                className="text-center w-full py-3 bg-gray-100 rounded-lg font-bold text-sm"
-              >
-                Masuk Akun
-              </Link>
+
+              {/* Mobile Dropdowns (Ditampilkan Terbuka/Flat agar mudah diakses) */}
+              {DROPDOWNS.map((dropdown) => (
+                <div key={dropdown.label} className="flex flex-col gap-1 mt-2">
+                  <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    {dropdown.label}
+                  </div>
+                  {dropdown.items.map((item) => (
+                     <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className="ml-4 px-4 py-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border-l-2 border-transparent hover:border-blue-200"
+                     >
+                       {item.name}
+                     </Link>
+                  ))}
+                </div>
+              ))}
+
+              <hr className="border-gray-100 my-4" />
+              
+              <div className="px-4 pb-4">
+                 <ButtonLink href="/login" variant="primary" className="w-full justify-center">
+                    Masuk Sekarang
+                 </ButtonLink>
+              </div>
             </div>
           </motion.div>
         )}

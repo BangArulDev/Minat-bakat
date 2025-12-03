@@ -67,11 +67,8 @@ export default function Navbar() {
         {/* --- BAGIAN KANAN: TOMBOL LOGIN --- */}
         <div className="hidden lg:flex items-center gap-4">
            {/* Menggunakan ButtonLink yang sudah Anda buat */}
-           <Link href="/register" className="group px-8 py-3 rounded-full font-medium transition-all flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800">
+           <Link href="/login" className="group px-8 py-3 rounded-full font-medium transition-all flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800">
              Daftar
-           </Link>
-           <Link href="/login" className="group px-8 py-3 rounded-full font-medium transition-all flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300">
-             Masuk
            </Link>
         </div>
 

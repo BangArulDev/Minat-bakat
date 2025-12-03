@@ -1,4 +1,5 @@
-import AuthPage from "@/components/AuthPage";
+import AuthPage from "@/components/auth/AuthPage";
+import clsx from "clsx";
 
 export const metadata = {
   title: "Masuk atau Daftar - TalentaKu",

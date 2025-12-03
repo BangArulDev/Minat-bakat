@@ -41,21 +41,20 @@ export default function AuthPage() {
   const currentContent = content[userType];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4">
       
       {/* Container Utama (Card Besar) */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]"
+        className="bg-white w-[80%] max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]"
       >
 
         {/* --- BAGIAN KIRI: VISUAL BANNER --- */}
         {/* Bagian ini berubah warna tergantung Siswa/Guru */}
         <motion.div 
-          className={`relative w-full md:w-5/12 p-12 flex flex-col justify-between text-white bg-gradient-to-br ${currentContent.bgGradient}`}
-          layout // Animasi halus saat layout berubah
+          className={`relative w-full md:w-[40%] p-12 flex flex-col justify-between text-white bg-linear-to-br ${currentContent.bgGradient}`}
         >
           {/* Logo Putih */}
           <div className="flex items-center gap-2">
@@ -94,7 +93,7 @@ export default function AuthPage() {
 
 
         {/* --- BAGIAN KANAN: FORM AREA --- */}
-        <div className="w-full md:w-7/12 p-8 md:p-12 flex flex-col justify-center bg-white relative">
+        <div className="w-full md:w-[60%] p-8 md:p-12 flex flex-col justify-center bg-white relative">
           
           {/* Tombol Back to Home (Pojok Kanan Atas) */}
           <Link href="/" className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 transition-colors">
@@ -110,7 +109,7 @@ export default function AuthPage() {
                 initial={false}
                 animate={{ 
                   x: userType === "siswa" ? 0 : "100%", 
-                  width: "50%" 
+                  width: userType === "siswa" ? "50%" : "47.5%"
                 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />

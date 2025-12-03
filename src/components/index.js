@@ -1,8 +1,8 @@
 // HomeSection
-export { default as Hero } from "@/components/HomeSection/Hero";
-export { default as About } from "@/components/HomeSection/About";
-export { default as Features } from "@/components/HomeSection/Features";
-export { default as Price } from "@/components/HomeSection/Price";
+export { default as Hero } from "@/components/home/Hero";
+export { default as About } from "@/components/home/About";
+export { default as Features } from "@/components/home/Features";
+export { default as Price } from "@/components/home/Price";
 
 // Layout
 export { default as Navbar } from "@/components/layout/Navbar";

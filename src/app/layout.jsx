@@ -10,7 +10,7 @@ const inter = Inter({
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="id" data-scroll-behavior="smooth">
       <body className={`${inter.variable} antialiased`}>
         <LayoutWrapper>
           {children}

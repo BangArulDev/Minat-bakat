@@ -1,4 +1,4 @@
-import { About, Features, Hero, Price, Process } from "@/components";
+import { About, Features, Hero, Price } from "../../components";
 
 
 export default function Home() {

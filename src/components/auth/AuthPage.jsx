@@ -44,7 +44,7 @@ export default function AuthPage() {
       
       {/* --- BAGIAN KIRI: VISUAL BANNER --- */}
       <motion.div 
-        className={`hidden md:flex relative w-full h-full p-16 flex-col justify-between text-white bg-gradient-to-br ${currentContent.bgGradient} transition-all duration-500`}
+        className={`hidden md:flex relative w-full h-full p-16 flex-col justify-between text-white bg-linear-to-br ${currentContent.bgGradient} transition-all duration-500`}
       >
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
@@ -101,7 +101,7 @@ export default function AuthPage() {
                   className="absolute top-1.5 bottom-1.5 bg-white rounded-full shadow-sm"
                   initial={false}
                   animate={{ x: userType === "siswa" ? 0 : "100%" }}
-                  style={{ width: "50%" }} 
+                  style={{ width: userType === "siswa" ? "50%" : "47.5%" }} 
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
                 <button onClick={() => setUserType("siswa")} className={`flex-1 relative z-10 py-2.5 rounded-full text-sm font-bold transition-colors ${userType === "siswa" ? "text-gray-900" : "text-gray-500"}`}>Siswa</button>

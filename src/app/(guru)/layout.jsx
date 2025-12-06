@@ -260,12 +260,12 @@ export default function GuruLayout({ children }) {
 
         {/* Footer Sidebar */}
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <button className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
+          <Link href="/" className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
              ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
           `}>
             <LogOut size={22} />
             {(isSidebarOpen || isMobile) && <span className="font-medium text-sm">Keluar Akun</span>}
-          </button>
+          </Link>
         </div>
       </motion.aside>
 

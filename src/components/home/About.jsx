@@ -103,14 +103,6 @@ export default function About() {
               </motion.div>
             </div>
 
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 text-blue-600 font-bold hover:gap-3 transition-all group"
-            >
-              Baca Selengkapnya 
-              <ArrowUpRight className="w-5 h-5 group-hover:-mt-1 group-hover:ml-1 transition-all" />
-            </motion.button>
           </motion.div>
 
         </div>

@@ -77,8 +77,8 @@ export default function Hero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           {/* Tombol Utama */}
-          <ButtonLink href="/tes">
-            Mulai Tes Sekarang
+          <ButtonLink href="/login">
+            Daftar Sekarang
             <ArrowRight
               size={18}
               className="group-hover:translate-x-1 transition-transform"

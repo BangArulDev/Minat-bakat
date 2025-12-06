@@ -4,14 +4,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { 
   Sparkles, User, Mail, Lock, ArrowRight, Briefcase, GraduationCap, 
-  School, MapPin, Map, CheckCircle, ArrowLeft, Phone, Hash, Calendar, Eye, EyeOff, Loader2
+  School, MapPin, Map, CheckCircle, ArrowLeft, Phone, Hash, Calendar, 
+  Eye, EyeOff, Loader2, Key, Send
 } from "lucide-react";
 
 export default function AuthPage() {
-  const [authMode, setAuthMode] = useState("login"); // 'login' atau 'register'
+  const [authMode, setAuthMode] = useState("login"); // 'login', 'register', 'forgot'
   const [userType, setUserType] = useState("siswa"); // 'siswa' atau 'guru'
 
-  const toggleAuthMode = () => setAuthMode(authMode === "login" ? "register" : "login");
+  // Navigasi Mode
+  const toRegister = () => setAuthMode("register");
+  const toLogin = () => setAuthMode("login");
+  const toForgot = () => setAuthMode("forgot");
 
   // Konfigurasi Tema
   const content = {
@@ -77,7 +81,6 @@ export default function AuthPage() {
           &copy; {new Date().getFullYear()} TalentaKu Platform.
         </div>
         
-        {/* Hiasan Blur Background */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-white/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
       </motion.div>
@@ -92,9 +95,8 @@ export default function AuthPage() {
             <XIcon />
           </Link>
 
-          {/* Switcher Siswa/Guru (Hanya di mode Login atau Register Siswa) */}
-          {/* Kita sembunyikan switcher hanya jika sedang Register GURU (karena multi-step) */}
-          {!(authMode === "register" && userType === "guru") && (
+          {/* Switcher Siswa/Guru (Sembunyikan saat Register Guru atau Lupa Password agar fokus) */}
+          {authMode === "login" || (authMode === "register" && userType === "siswa") ? (
             <div className="flex justify-center mb-10">
               <div className="bg-gray-100 p-1.5 rounded-full inline-flex relative w-full max-w-[300px]">
                 <motion.div 
@@ -108,18 +110,23 @@ export default function AuthPage() {
                 <button onClick={() => setUserType("guru")} className={`flex-1 relative z-10 py-2.5 rounded-full text-sm font-bold transition-colors ${userType === "guru" ? "text-gray-900" : "text-gray-500"}`}>Guru</button>
               </div>
             </div>
-          )}
+          ) : null}
 
           <AnimatePresence mode="wait">
-            {authMode === "login" ? (
-              // --- FORM LOGIN (Dinamis Siswa vs Guru) ---
-              <LoginForm key="login-form" content={currentContent} toggleMode={toggleAuthMode} userType={userType} />
-            ) : userType === "guru" ? (
-              // --- FORM REGISTER GURU ---
-              <RegisterGuruForm key="register-guru" content={currentContent} toggleMode={toggleAuthMode} />
-            ) : (
-              // --- FORM REGISTER SISWA (Sekarang Multi-Step) ---
-              <RegisterSiswaForm key="register-siswa" content={currentContent} toggleMode={toggleAuthMode} />
+            {authMode === "login" && (
+              <LoginForm key="login" content={currentContent} toRegister={toRegister} toForgot={toForgot} userType={userType} />
+            )}
+            
+            {authMode === "register" && userType === "siswa" && (
+              <RegisterSiswaForm key="reg-siswa" content={currentContent} toLogin={toLogin} />
+            )}
+            
+            {authMode === "register" && userType === "guru" && (
+              <RegisterGuruForm key="reg-guru" content={currentContent} toLogin={toLogin} />
+            )}
+
+            {authMode === "forgot" && (
+              <ForgotPasswordForm key="forgot" content={currentContent} toLogin={toLogin} />
             )}
           </AnimatePresence>
 
@@ -130,9 +137,9 @@ export default function AuthPage() {
 }
 
 // =================================================================
-// 1. KOMPONEN LOGIN (DINAMIS)
+// 1. KOMPONEN LOGIN
 // =================================================================
-function LoginForm({ content, toggleMode, userType }) {
+function LoginForm({ content, toRegister, toForgot, userType }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
       <div className="text-center mb-8">
@@ -143,13 +150,10 @@ function LoginForm({ content, toggleMode, userType }) {
       </div>
       
       <form className="space-y-5">
-        
-        {/* INPUT KHUSUS SISWA: KODE KELAS */}
         {userType === "siswa" && (
            <InputIcon icon={Hash} placeholder="Kode Kelas (Contoh: X-IPA-1)" ringColor={content.ringColor} />
         )}
 
-        {/* Username (Siswa) atau Email (Guru) */}
         <InputIcon 
           icon={userType === "siswa" ? User : Mail} 
           type={userType === "siswa" ? "text" : "email"} 
@@ -160,7 +164,9 @@ function LoginForm({ content, toggleMode, userType }) {
         <InputIcon icon={Lock} type="password" placeholder="Kata Sandi" ringColor={content.ringColor} />
         
         <div className="flex justify-end">
-          <a href="#" className={`text-sm font-bold hover:underline ${content.textColor}`}>Lupa Password?</a>
+          <button type="button" onClick={toForgot} className={`text-sm font-bold hover:underline ${content.textColor}`}>
+            Lupa Password?
+          </button>
         </div>
         
         <button type="button" className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all ${content.buttonColor}`}>
@@ -169,55 +175,114 @@ function LoginForm({ content, toggleMode, userType }) {
       </form>
       
       <div className="mt-8 text-center text-gray-500">
-        Belum punya akun? <button onClick={toggleMode} className={`font-bold hover:underline ${content.textColor}`}>Daftar Gratis</button>
+        Belum punya akun? <button onClick={toRegister} className={`font-bold hover:underline ${content.textColor}`}>Daftar Gratis</button>
       </div>
     </motion.div>
   );
 }
 
 // =================================================================
-// 2. KOMPONEN REGISTER SISWA (MULTI-STEP BARU)
+// 2. KOMPONEN FORGOT PASSWORD (BARU)
 // =================================================================
-function RegisterSiswaForm({ content, toggleMode }) {
+function ForgotPasswordForm({ content, toLogin }) {
+  const [isSent, setIsSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setIsLoading(true);
+    // Simulasi API call
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsSent(true);
+    }, 1500);
+  };
+
+  if (isSent) {
+    return (
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle size={40} className="text-green-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Cek Email Anda</h2>
+        <p className="text-gray-500 mb-8 leading-relaxed">
+          Kami telah mengirimkan tautan untuk mengatur ulang kata sandi ke <strong>{email}</strong>.
+        </p>
+        <button 
+          onClick={toLogin} 
+          className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all ${content.buttonColor}`}
+        >
+          <ArrowLeft size={20} /> Kembali ke Login
+        </button>
+        <button 
+          onClick={() => setIsSent(false)} 
+          className="mt-6 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          Kirim ulang email
+        </button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}>
+      <div className="mb-8">
+        <button onClick={toLogin} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors mb-6 text-sm font-medium">
+          <ArrowLeft size={16} /> Kembali
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h1>
+        <p className="text-gray-500 text-sm">
+          Masukkan email atau username yang terdaftar. Kami akan mengirimkan instruksi reset password.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <InputIcon 
+          icon={Mail} 
+          type="email" 
+          placeholder="Masukkan Email / Username" 
+          ringColor={content.ringColor} 
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <button 
+          type="submit" 
+          disabled={isLoading || !email}
+          className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${content.buttonColor}`}
+        >
+          {isLoading ? <Loader2 className="animate-spin" /> : <><Send size={20} /> Kirim Link Reset</>}
+        </button>
+      </form>
+    </motion.div>
+  );
+}
+
+// =================================================================
+// 3. KOMPONEN REGISTER SISWA
+// =================================================================
+function RegisterSiswaForm({ content, toLogin }) {
   const [step, setStep] = useState(1);
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [classInfo, setClassInfo] = useState({ name: "", school: "" });
 
   const [formData, setFormData] = useState({
-    kodeKelas: "",
-    namaKelas: "",
-    sekolah: "",
-    kota: "",
-    nis: "",
-    namaLengkap: "",
-    kotaLahir: "",
-    tanggalLahir: "",
-    jenisKelamin: "L",
-    username: "",
-    password: "",
-    confirmPassword: ""
+    kodeKelas: "", namaKelas: "", sekolah: "", kota: "", nis: "", namaLengkap: "",
+    kotaLahir: "", tanggalLahir: "", jenisKelamin: "L", username: "", password: "", confirmPassword: ""
   });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // Simulasi Validasi Kode Kelas
   const handleCheckCode = () => {
     if (!formData.kodeKelas) return;
     setIsValidatingCode(true);
-    
-    // Pura-pura loading 1 detik
     setTimeout(() => {
       setIsValidatingCode(false);
-      // Pura-pura dapet data dari server
       const mockData = { name: "XII IPA 2", school: "SMA Negeri 1 Talenta" };
       setClassInfo(mockData);
-      setFormData(prev => ({
-         ...prev, 
-         namaKelas: mockData.name,
-         sekolah: mockData.school 
-      }));
+      setFormData(prev => ({ ...prev, namaKelas: mockData.name, sekolah: mockData.school }));
     }, 1000);
   };
 
@@ -234,59 +299,42 @@ function RegisterSiswaForm({ content, toggleMode }) {
       </div>
 
       <form className="space-y-4">
-        
-        {/* === LANGKAH 1: INFO PRIBADI & KELAS === */}
         {step === 1 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            
-            {/* Input Kode Kelas dengan Tombol Validasi */}
             <div className="relative">
               <label className="text-xs font-bold text-gray-500 ml-1 mb-1 block">Kode Kelas</label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                    <Hash className="absolute left-4 top-3.5 text-gray-400" size={20} />
                    <input 
-                      name="kodeKelas" 
-                      value={formData.kodeKelas} 
-                      onChange={handleChange}
-                      placeholder="Masukkan Kode" 
-                      className={`w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${content.ringColor} transition-all font-medium text-sm`}
+                     name="kodeKelas" 
+                     value={formData.kodeKelas} 
+                     onChange={handleChange}
+                     placeholder="Masukkan Kode" 
+                     className={`w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 ${content.ringColor} transition-all font-medium text-sm`}
                    />
                 </div>
-                <button 
-                  type="button" 
-                  onClick={handleCheckCode}
-                  className="px-4 py-2 bg-blue-100 text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-200 transition-colors"
-                >
+                <button type="button" onClick={handleCheckCode} className="px-4 py-2 bg-blue-100 text-blue-600 rounded-xl font-bold text-sm hover:bg-blue-200 transition-colors">
                   {isValidatingCode ? <Loader2 className="animate-spin" size={20} /> : "Cek"}
                 </button>
               </div>
               {classInfo.name && (
-                <p className="text-xs text-green-600 mt-1 ml-1 flex items-center gap-1">
-                  <CheckCircle size={12} /> Kelas ditemukan: {classInfo.name}
-                </p>
+                <p className="text-xs text-green-600 mt-1 ml-1 flex items-center gap-1"><CheckCircle size={12} /> Kelas ditemukan: {classInfo.name}</p>
               )}
             </div>
-
-            {/* Field ReadOnly / AutoFill */}
             <div className="grid grid-cols-2 gap-4">
                <InputIcon icon={Briefcase} name="namaKelas" placeholder="Nama Kelas" value={formData.namaKelas} readOnly className="bg-gray-100 text-gray-500" />
                <InputIcon icon={School} name="sekolah" placeholder="Nama Sekolah" value={formData.sekolah} readOnly className="bg-gray-100 text-gray-500" />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
                <InputIcon icon={MapPin} name="kota" placeholder="Kota / Kab." ringColor={content.ringColor} onChange={handleChange} />
                <InputIcon icon={Hash} name="nis" placeholder="NIS" type="number" ringColor={content.ringColor} onChange={handleChange} />
             </div>
-
             <InputIcon icon={User} name="namaLengkap" placeholder="Nama Lengkap" ringColor={content.ringColor} onChange={handleChange} />
-
             <div className="grid grid-cols-2 gap-4">
                <InputIcon icon={Map} name="kotaLahir" placeholder="Kota Lahir" ringColor={content.ringColor} onChange={handleChange} />
                <InputIcon icon={Calendar} name="tanggalLahir" type="date" ringColor={content.ringColor} onChange={handleChange} />
             </div>
-
-             {/* Radio Jenis Kelamin */}
              <div className="flex gap-4">
                 <label className={`flex-1 flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${formData.jenisKelamin === 'L' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
                   <input type="radio" name="jenisKelamin" value="L" checked={formData.jenisKelamin === 'L'} onChange={handleChange} className="w-4 h-4 accent-blue-600" />
@@ -300,11 +348,9 @@ function RegisterSiswaForm({ content, toggleMode }) {
           </motion.div>
         )}
 
-        {/* === LANGKAH 2: AKUN LOGIN === */}
         {step === 2 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
              <h3 className="font-bold text-gray-700 flex items-center gap-2"><Lock size={18} /> Informasi Login</h3>
-             
              <InputIcon icon={User} name="username" placeholder="Buat Username" ringColor={content.ringColor} onChange={handleChange} />
              <InputIcon icon={Lock} name="password" type="password" placeholder="Password Baru" ringColor={content.ringColor} onChange={handleChange} />
              <InputIcon icon={CheckCircle} name="confirmPassword" type="password" placeholder="Konfirmasi Password" ringColor={content.ringColor} onChange={handleChange} />
@@ -317,7 +363,6 @@ function RegisterSiswaForm({ content, toggleMode }) {
               <ArrowLeft size={18} /> Kembali
             </button>
           )}
-          
           {step < 2 ? (
              <button type="button" onClick={() => setStep(step + 1)} className={`flex-1 py-3 rounded-xl text-white font-bold hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2 ${content.buttonColor}`}>
                Lanjut <ArrowRight size={18} />
@@ -331,16 +376,16 @@ function RegisterSiswaForm({ content, toggleMode }) {
       </form>
       
       <div className="mt-8 text-center text-gray-500 text-sm">
-        Sudah punya akun? <button onClick={toggleMode} className={`font-bold hover:underline ${content.textColor}`}>Login disini</button>
+        Sudah punya akun? <button onClick={toLogin} className={`font-bold hover:underline ${content.textColor}`}>Login disini</button>
       </div>
     </motion.div>
   );
 }
 
 // =================================================================
-// 3. KOMPONEN REGISTER GURU (SAMA SEPERTI SEBELUMNYA)
+// 4. KOMPONEN REGISTER GURU
 // =================================================================
-function RegisterGuruForm({ content, toggleMode }) {
+function RegisterGuruForm({ content, toLogin }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     kodeSekolah: "", namaSekolah: "", alamatSekolah: "", provinsi: "", kota: "", kotaAlias: "",
@@ -437,14 +482,14 @@ function RegisterGuruForm({ content, toggleMode }) {
         </div>
       </form>
       <div className="mt-8 text-center text-gray-500 text-sm">
-        Sudah punya akun? <button onClick={toggleMode} className={`font-bold hover:underline ${content.textColor}`}>Login disini</button>
+        Sudah punya akun? <button onClick={toLogin} className={`font-bold hover:underline ${content.textColor}`}>Login disini</button>
       </div>
     </motion.div>
   );
 }
 
 // =================================================================
-// 4. UTILITY COMPONENTS
+// 5. UTILITY COMPONENTS
 // =================================================================
 function InputIcon({ icon: Icon, ringColor, className, ...props }) {
   return (

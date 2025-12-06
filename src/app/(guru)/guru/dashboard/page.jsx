@@ -1,6 +1,7 @@
 "use client";
 import { Users, BookOpen, FileText, CreditCard, School, AlertTriangle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 export default function DashboardGuru() {
   return (
@@ -77,9 +78,9 @@ export default function DashboardGuru() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <button className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200">
+              <Link href="/guru/beli-kuota" className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200">
                 Beli Kuota Sekarang
-              </button>
+              </Link>
               <p className="text-xs text-gray-500 text-center sm:text-left">
                 Metode pembayaran: Virtual Account, QRIS, Alfamart, Indomaret, Kartu Kredit.
               </p>

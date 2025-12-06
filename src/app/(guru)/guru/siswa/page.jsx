@@ -11,7 +11,13 @@ import {
   Filter,
   User,
   Calendar,
-  Wifi
+  Key,
+  X,
+  Save,
+  AlertTriangle,
+  Hash,
+  School,
+  MapPin
 } from "lucide-react";
 
 // MOCK DATA: Contoh Data Siswa
@@ -19,48 +25,51 @@ const initialStudents = [
   {
     id: 1,
     nis: "20241001",
+    username: "20241001", // Username default sama dengan NIS
     name: "Ahmad Rizki",
-    pob: "Jakarta", // Tempat Lahir
-    dob: "12 Mei 2007", // Tanggal Lahir
-    gender: "L", // L atau P
+    pob: "Jakarta",
+    dob: "12 Mei 2007",
+    gender: "L",
     classCode: "CLS-X-IPA1",
     className: "X MIPA 1",
-    lastLogin: "Online", // Bisa 'Online' atau tanggal terakhir
   },
   {
     id: 2,
     nis: "20241002",
+    username: "20241002",
     name: "Bunga Citra",
     pob: "Bandung",
     dob: "03 Ags 2007",
     gender: "P",
     classCode: "CLS-X-IPA1",
     className: "X MIPA 1",
-    lastLogin: "Kemarin, 14:00",
   },
   {
     id: 3,
     nis: "20241003",
+    username: "20241003",
     name: "Candra Wijaya",
     pob: "Surabaya",
     dob: "20 Jan 2006",
     gender: "L",
     classCode: "CLS-XI-IPS2",
     className: "XI IPS 2",
-    lastLogin: "20 Jan 2024",
   },
   {
     id: 4,
     nis: "20241004",
+    username: "20241004",
     name: "Dinda Kirana",
     pob: "Medan",
     dob: "15 Feb 2007",
     gender: "P",
     classCode: "CLS-X-IPA2",
     className: "X MIPA 2",
-    lastLogin: "Online",
   },
 ];
+
+// Opsi Kelas (Bisa diambil dari API nantinya)
+const classOptions = ["X MIPA 1", "X MIPA 2", "XI IPS 1", "XI IPS 2", "XII Bahasa"];
 
 export default function SiswaPage() {
   const [data, setData] = useState(initialStudents);
@@ -68,6 +77,23 @@ export default function SiswaPage() {
   const [search, setSearch] = useState("");
   const [filterClass, setFilterClass] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
+
+  // --- STATE MODAL FORM (ADD/EDIT) ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [formData, setFormData] = useState({
+    id: "",
+    nis: "",
+    name: "",
+    pob: "",
+    dob: "",
+    gender: "L",
+    className: "X MIPA 1"
+  });
+
+  // --- STATE MODAL DELETE ---
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // --- FUNGSI LOGIKA ---
 
@@ -79,30 +105,73 @@ export default function SiswaPage() {
     }, 800);
   };
 
-  const handleAdd = () => {
-    const newId = Date.now();
-    const newItem = {
-      id: newId,
-      nis: `2024${Math.floor(1000 + Math.random() * 9000)}`,
-      name: "Siswa Baru (Draft)",
-      pob: "Kota",
-      dob: "01 Jan 2008",
-      gender: Math.random() > 0.5 ? "L" : "P",
-      classCode: "CLS-X-NEW",
-      className: "X Baru",
-      lastLogin: "Belum Login",
-    };
-    setData([newItem, ...data]);
+  // 1. Handle Tambah Data
+  const handleAddClick = () => {
+    setIsEditMode(false);
+    // Generate NIS Baru (Simulasi)
+    const newNIS = `2024${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    setFormData({
+      id: Date.now(),
+      nis: newNIS,
+      name: "",
+      pob: "",
+      dob: "",
+      gender: "L",
+      className: "X MIPA 1"
+    });
+    setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    if (confirm("Hapus data siswa ini?")) {
-      setData(data.filter((item) => item.id !== id));
-      setOpenDropdownId(null);
+  // 2. Handle Edit Data
+  const handleEditClick = (item) => {
+    setIsEditMode(true);
+    setFormData(item);
+    setOpenDropdownId(null);
+    setIsModalOpen(true);
+  };
+
+  // 3. Simpan Data (Add/Edit)
+  const handleSaveData = () => {
+    if (!formData.name || !formData.pob || !formData.dob) {
+      alert("Harap lengkapi semua data siswa!");
+      return;
+    }
+
+    if (isEditMode) {
+      // Update Data
+      setData(data.map(item => item.id === formData.id ? { 
+        ...formData, 
+        username: formData.nis // Username selalu sync dengan NIS
+      } : item));
+    } else {
+      // Create Data Baru
+      const newItem = {
+        ...formData,
+        username: formData.nis, // Username otomatis NIS
+        classCode: `CLS-${formData.className.replace(/\s/g, '-')}` // Generate kode kelas dummy
+      };
+      setData([newItem, ...data]);
+    }
+    setIsModalOpen(false);
+  };
+
+  // 4. Handle Delete
+  const handleDeleteClick = (item) => {
+    setItemToDelete(item);
+    setOpenDropdownId(null);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      setData(data.filter((item) => item.id !== itemToDelete.id));
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
-  // Filter Data (Pencarian + Filter Kelas)
+  // Filter Data
   const filteredData = data.filter(item => {
     const matchSearch = item.name.toLowerCase().includes(search.toLowerCase()) || 
                         item.nis.includes(search);
@@ -111,9 +180,8 @@ export default function SiswaPage() {
   });
 
   // Unique Classes untuk Dropdown Filter
-  const classOptions = [...new Set(data.map(item => item.className))];
+  const uniqueClasses = [...new Set(data.map(item => item.className))];
 
-  // Tutup dropdown jika klik di luar
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".action-dropdown")) {
@@ -144,7 +212,7 @@ export default function SiswaPage() {
           </button>
 
           <button 
-            onClick={handleAdd}
+            onClick={handleAddClick}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-200"
           >
             <Plus size={20} />
@@ -155,8 +223,6 @@ export default function SiswaPage() {
 
       {/* FILTER & SEARCH BAR */}
       <div className="bg-white p-4 rounded-2xl border border-gray-200 flex flex-col md:flex-row gap-4 items-center shadow-sm">
-        
-        {/* Filter Kelas */}
         <div className="w-full md:w-64 relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Filter size={18} className="text-gray-400" />
@@ -167,13 +233,12 @@ export default function SiswaPage() {
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
           >
             <option value="">Semua Kelas</option>
-            {classOptions.map(cls => (
+            {uniqueClasses.map(cls => (
               <option key={cls} value={cls}>{cls}</option>
             ))}
           </select>
         </div>
 
-        {/* Search Input */}
         <div className="w-full relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
@@ -190,7 +255,6 @@ export default function SiswaPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500 text-center w-14">No</th>
@@ -198,13 +262,11 @@ export default function SiswaPage() {
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500">Nama Siswa</th>
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500">TTL</th>
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500 text-center">L/P</th>
-                <th className="py-4 px-6 font-semibold text-sm text-gray-500">Kode Kelas</th>
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500">Kelas</th>
-                <th className="py-4 px-6 font-semibold text-sm text-gray-500">Login</th>
+                <th className="py-4 px-6 font-semibold text-sm text-gray-500">Login (Username)</th>
                 <th className="py-4 px-6 font-semibold text-sm text-gray-500 text-center w-20">Opsi</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-gray-100">
               <AnimatePresence>
                 {filteredData.length > 0 ? (
@@ -219,7 +281,7 @@ export default function SiswaPage() {
                       <td className="py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
                       
                       <td className="py-4 px-6 text-sm">
-                        <span className="font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">{item.nis}</span>
+                        <span className="font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{item.nis}</span>
                       </td>
                       
                       <td className="py-4 px-6 text-sm font-bold text-gray-900">{item.name}</td>
@@ -235,34 +297,20 @@ export default function SiswaPage() {
 
                       <td className="py-4 px-6 text-center">
                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold
-                          ${item.gender === 'L' 
-                            ? 'bg-blue-100 text-blue-600' // Laki-laki Biru
-                            : 'bg-pink-100 text-pink-600' // Perempuan Pink
-                          }
+                          ${item.gender === 'L' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}
                         `}>
                           {item.gender}
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 text-sm text-gray-500">{item.classCode}</td>
-                      
                       <td className="py-4 px-6 text-sm font-medium text-gray-700">{item.className}</td>
 
+                      {/* Kolom Login (Username) */}
                       <td className="py-4 px-6 text-sm">
-                        {item.lastLogin === 'Online' ? (
-                          <div className="flex items-center gap-1.5 text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full w-fit text-xs">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            Online
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-gray-400 text-xs">
-                            <Wifi size={12} />
-                            {item.lastLogin}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 w-fit">
+                          <Key size={14} className="text-gray-400" />
+                          <span className="font-mono font-bold">{item.username}</span>
+                        </div>
                       </td>
 
                       <td className="py-4 px-6 text-center relative action-dropdown">
@@ -285,19 +333,17 @@ export default function SiswaPage() {
                               className="absolute right-8 top-8 w-36 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden text-left"
                             >
                               <button 
-                                onClick={() => { alert(`Edit: ${item.name}`); setOpenDropdownId(null); }}
+                                onClick={() => handleEditClick(item)}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-colors"
                               >
-                                <Edit size={16} />
-                                Edit
+                                <Edit size={16} /> Edit
                               </button>
                               <div className="border-t border-gray-50" />
                               <button 
-                                onClick={() => handleDelete(item.id)}
+                                onClick={() => handleDeleteClick(item)}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                               >
-                                <Trash2 size={16} />
-                                Hapus
+                                <Trash2 size={16} /> Hapus
                               </button>
                             </motion.div>
                           )}
@@ -307,7 +353,7 @@ export default function SiswaPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="py-12 text-center text-gray-500">
+                    <td colSpan="8" className="py-12 text-center text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <User size={32} className="text-gray-300" />
                         <p>Data siswa tidak ditemukan</p>
@@ -319,18 +365,122 @@ export default function SiswaPage() {
             </tbody>
           </table>
         </div>
-
-        {/* Footer Pagination */}
+        
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-xs text-gray-500">
-            Menampilkan <span className="font-bold text-gray-900">{filteredData.length}</span> siswa
-          </p>
+          <p className="text-xs text-gray-500">Menampilkan <span className="font-bold text-gray-900">{filteredData.length}</span> siswa</p>
           <div className="flex gap-2">
-             <button className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-500 disabled:opacity-50" disabled>Sebelumnya</button>
+             <button className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-500" disabled>Sebelumnya</button>
              <button className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50">Selanjutnya</button>
           </div>
         </div>
       </div>
+
+      {/* --- MODAL FORM (ADD/EDIT) --- */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-g60 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  {isEditMode ? <Edit size={20} className="text-orange-600" /> : <Plus size={20} className="text-blue-600" />}
+                  {isEditMode ? "Edit Data Siswa" : "Tambah Siswa Baru"}
+                </h3>
+                <button onClick={() => setIsModalOpen(false)} className="p-1 rounded-full hover:bg-gray-200 text-gray-500">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* NIS (Auto/Manual) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1"><Hash size={14} /> NIS</label>
+                    <input type="text" value={formData.nis} onChange={(e) => setFormData({...formData, nis: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono" />
+                  </div>
+
+                  {/* Nama Lengkap */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1"><User size={14} /> Nama Lengkap</label>
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  </div>
+
+                  {/* Tempat Lahir */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1"><MapPin size={14} /> Tempat Lahir</label>
+                    <input type="text" value={formData.pob} onChange={(e) => setFormData({...formData, pob: e.target.value})} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  </div>
+
+                  {/* Tanggal Lahir */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1"><Calendar size={14} /> Tanggal Lahir</label>
+                    <input type="text" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} placeholder="Contoh: 12 Mei 2007" className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                  </div>
+
+                  {/* Jenis Kelamin */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Jenis Kelamin</label>
+                    <div className="flex gap-4 pt-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="gender" checked={formData.gender === 'L'} onChange={() => setFormData({...formData, gender: 'L'})} className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-700">Laki-laki</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="gender" checked={formData.gender === 'P'} onChange={() => setFormData({...formData, gender: 'P'})} className="w-4 h-4 text-pink-600" />
+                        <span className="text-sm font-medium text-gray-700">Perempuan</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Kelas */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1"><School size={14} /> Kelas</label>
+                    <select value={formData.className} onChange={(e) => setFormData({...formData, className: e.target.value})} className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                      {classOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 border rounded-xl font-bold text-gray-600 hover:bg-white">Batal</button>
+                <button onClick={handleSaveData} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 flex items-center gap-2"><Save size={18} /> Simpan</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL DELETE --- */}
+      <AnimatePresence>
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+             <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center"
+            >
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Hapus Siswa?</h3>
+              <p className="text-gray-500 mb-6 text-sm">
+                Apakah Anda yakin ingin menghapus data <span className="font-bold text-gray-800">{itemToDelete?.name}</span>? Data hasil tes siswa ini juga akan terhapus.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setIsDeleteModalOpen(false)} className="px-5 py-2.5 border border-gray-300 rounded-xl font-bold text-gray-600 hover:bg-gray-50">Batal</button>
+                <button onClick={confirmDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-200">Ya, Hapus</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

@@ -136,7 +136,7 @@ export default function TabulasiPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="py-4 px-4 font-semibold text-sm text-gray-500 w-12 text-center sticky left-0 bg-gray-50 z-10 border-r border-gray-200">No</th>
-                <th className="py-4 px-4 font-semibold text-sm text-gray-500 sticky left-12 bg-gray-50 z-10 border-r border-gray-200 min-w-[200px]">Identitas Siswa</th>
+                <th className="py-4 pl-4 pr-10 font-semibold text-sm text-gray-500 sticky left-12 bg-gray-50 z-10 border-r border-gray-200 min-w-auto">Identitas Siswa</th>
                 
                 {/* Dynamic Columns Header */}
                 {currentConfig.columns.map((col, idx) => (

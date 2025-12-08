@@ -278,15 +278,15 @@ export default function SiswaPage() {
                       exit={{ opacity: 0 }}
                       className="hover:bg-blue-50/50 transition-colors"
                     >
-                      <td className="py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
                       
-                      <td className="py-4 px-6 text-sm">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                         <span className="font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold">{item.nis}</span>
                       </td>
                       
-                      <td className="py-4 px-6 text-sm font-bold text-gray-900">{item.name}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm font-bold text-gray-900">{item.name}</td>
                       
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-500">
                         <div className="flex flex-col">
                           <span className="font-medium text-gray-700">{item.pob}</span>
                           <span className="text-xs text-gray-400 flex items-center gap-1">
@@ -295,7 +295,7 @@ export default function SiswaPage() {
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 text-center">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center">
                         <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold
                           ${item.gender === 'L' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}
                         `}>
@@ -303,17 +303,17 @@ export default function SiswaPage() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 text-sm font-medium text-gray-700">{item.className}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm font-medium text-gray-700">{item.className}</td>
 
                       {/* Kolom Login (Username) */}
-                      <td className="py-4 px-6 text-sm">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                         <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 w-fit">
                           <Key size={14} className="text-gray-400" />
                           <span className="font-mono font-bold">{item.username}</span>
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 text-center relative action-dropdown">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center relative action-dropdown">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();

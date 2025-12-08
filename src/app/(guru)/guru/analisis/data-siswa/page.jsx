@@ -224,19 +224,19 @@ export default function AnalisisDataSiswaPage() {
                       exit={{ opacity: 0 }}
                       className="hover:bg-blue-50/30 transition-colors"
                     >
-                      <td className="py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
                       
-                      <td className="py-4 px-6">
+                      <td className="whitespace-nowrap w-auto py-4 px-6">
                         <div>
                           <p className="font-bold text-gray-900 text-sm">{item.name}</p>
                           <p className="text-xs text-gray-400 font-mono">{item.nis}</p>
                         </div>
                       </td>
                       
-                      <td className="py-4 px-6 text-sm text-gray-600 font-medium">{item.className}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-600 font-medium">{item.className}</td>
 
                       {/* Progress Bar Column */}
-                      <td className="py-4 px-6 align-middle">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 align-middle">
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                             <div 
@@ -252,7 +252,7 @@ export default function AnalisisDataSiswaPage() {
                       </td>
 
                       {/* Status Badge */}
-                      <td className="py-4 px-6">
+                      <td className="whitespace-nowrap w-auto py-4 px-6">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border
                           ${item.status === "Selesai" ? "bg-green-50 text-green-700 border-green-200" : 
                             item.status === "Proses" ? "bg-yellow-50 text-yellow-700 border-yellow-200" : 
@@ -265,12 +265,12 @@ export default function AnalisisDataSiswaPage() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-500">
                         {item.lastActivity}
                       </td>
 
                       {/* Action Dropdown */}
-                      <td className="py-4 px-6 text-center relative">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center relative">
                         <button 
                           onClick={() => setOpenDropdownId(openDropdownId === item.id ? null : item.id)}
                           className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-900 transition-colors"

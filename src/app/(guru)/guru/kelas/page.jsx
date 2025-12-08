@@ -243,25 +243,25 @@ export default function KelasPage() {
                 {filteredData.length > 0 ? (
                   filteredData.map((item, index) => (
                     <motion.tr key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="hover:bg-blue-50/50 transition-colors">
-                      <td className="py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
-                      <td className="py-4 px-6 text-sm">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                         <span className="font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">{item.code}</span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="whitespace-nowrap w-auto py-4 px-6">
                         <div>
                           <p className="text-sm font-bold text-gray-900">{item.name}</p>
                           <p className="text-xs text-gray-400">{item.studentCount} Siswa Terdaftar</p>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-center">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${item.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                           {item.status === 'active' ? <><CheckCircle size={12} /> Aktif</> : <><XCircle size={12} /> Non-Aktif</>}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-500">
                         <div className="flex items-center gap-2"><Calendar size={14} className="text-gray-400" />{item.createdAt}</div>
                       </td>
-                      <td className="py-4 px-6 text-center relative action-dropdown">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center relative action-dropdown">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();

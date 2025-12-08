@@ -137,7 +137,7 @@ export default function TransaksiPage() {
                     className="hover:bg-blue-50/50 transition-colors"
                   >
                     {/* Kolom Tanggal */}
-                    <td className="py-4 px-6 text-sm">
+                    <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                       <div className="flex flex-col">
                         <span className="font-medium text-gray-900">{item.date.split(',')[0]}</span>
                         <span className="text-xs text-gray-400">{item.date.split(',')[1]}</span>
@@ -145,7 +145,7 @@ export default function TransaksiPage() {
                     </td>
 
                     {/* Kolom Layanan & ID */}
-                    <td className="py-4 px-6 text-sm">
+                    <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                       <div className="mb-1 font-bold text-gray-800">{item.service}</div>
                       <div className="flex items-center gap-2">
                          <span className="text-xs font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{item.id}</span>
@@ -157,12 +157,12 @@ export default function TransaksiPage() {
                     </td>
 
                     {/* Kolom Harga */}
-                    <td className="py-4 px-6 text-sm font-medium text-gray-900">
+                    <td className="whitespace-nowrap w-auto py-4 px-6 text-sm font-medium text-gray-900">
                       {formatRp(item.price)}
                     </td>
 
                     {/* Kolom Metode */}
-                    <td className="py-4 px-6 text-sm text-gray-600">
+                    <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         {item.method === 'QRIS' && <QrCode size={16} />}
                         {item.method.includes('Virtual') && <Building size={16} />}
@@ -172,7 +172,7 @@ export default function TransaksiPage() {
                     </td>
 
                     {/* Kolom Detail (Button) */}
-                    <td className="py-4 px-6 text-center">
+                    <td className="whitespace-nowrap w-auto py-4 px-6 text-center">
                       {item.status === 'success' ? (
                         <button 
                           onClick={() => setSelectedTx(item)}

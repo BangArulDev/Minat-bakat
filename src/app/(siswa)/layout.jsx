@@ -45,7 +45,7 @@ export default function SiswaLayout({ children }) {
       <motion.aside
         initial={false}
         animate={{ 
-          width: isMobile ? (isSidebarOpen ? "100%" : "0px") : (isSidebarOpen ? "260px" : "80px") 
+          width: isMobile ? (isSidebarOpen ? "50%" : "0px") : (isSidebarOpen ? "260px" : "80px") 
         }}
         className={`bg-white border-r border-gray-200 flex flex-col z-40 transition-all duration-300
           ${isMobile ? "fixed inset-0" : "relative"} 

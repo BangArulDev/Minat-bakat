@@ -114,7 +114,7 @@ export default function Navbar() {
               <div className="px-4 pb-4">
                 <Link
                   href="/login"
-                  className="group px-8 py-4 rounded-full font-medium transition-all flex items-center justify-center gap-2 bg-gray-900 text-white hover:bg-gray-800"
+                  className="group px-8 py-2 rounded-full font-medium transition-all flex items-center justify-center gap-2 bg-gray-900 text-white hover:bg-gray-800"
                 >
                   Daftar
                 </Link>

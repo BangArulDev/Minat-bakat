@@ -161,42 +161,42 @@ export default function DataHasilPilihanPage() {
                       exit={{ opacity: 0 }}
                       className="hover:bg-blue-50/50 transition-colors"
                     >
-                      <td className="py-4 px-6 text-sm text-center text-gray-500 font-medium">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">
                         {index + 1}
                       </td>
                       
-                      <td className="py-4 px-6">
+                      <td className="whitespace-nowrap w-auto py-4 px-6">
                         <div>
                           <p className="text-sm font-bold text-gray-900">{item.name}</p>
                           <p className="text-xs text-gray-400 font-mono">{item.nis}</p>
                         </div>
                       </td>
                       
-                      <td className="py-4 px-6 text-sm text-gray-600 font-medium">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-600 font-medium">
                         {item.className}
                       </td>
 
-                      <td className="py-4 px-6 text-sm">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                         <div className="flex items-center gap-2 text-gray-700">
                           <FileText size={16} className="text-blue-500" />
                           {item.testType}
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 text-sm text-gray-500">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-gray-500">
                         <div className="flex items-center gap-2">
                           <Calendar size={14} />
                           {item.date}
                         </div>
                       </td>
 
-                      <td className="py-4 px-6">
+                      <td className="whitespace-nowrap w-auto py-4 px-6">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${item.color}`}>
                           {item.result}
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 text-center">
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-center">
                         <button 
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group relative"
                           title="Lihat Detail Analisis"

@@ -1,0 +1,68 @@
+/* 1. Panggil Kekuatan Tailwind v4 */
+@import "tailwindcss";
+
+/* 2. Mengatur Tema (Identitas Visual) */
+/* Di v4, kita atur variabel langsung di CSS, tidak perlu buka file config js lagi */
+@theme {
+  /* Mengatur Font agar sinkron dengan Next.js (Inter) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Warna Brand (Biru TalentaKu) */
+  /* Kita namakan --color-brand agar kalau mau ganti warna tinggal ubah di sini */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+
+  /* Radius Sudut (Biar tumpul dan ramah) */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-3xl: 2rem;     /* 32px */
+}
+
+/* 3. Aturan Dasar (Pondasi Rumah) */
+/* Ini settingan agar website terasa 'mahal' dan nyaman */
+
+/* Agar kalau klik link, layarnya geser halus (tidak kaget) */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  /* Warna Background: Putih tulang (bukan putih silau) */
+  background-color: #fafafa; 
+  /* Warna Teks: Hitam pudar (biar mata tidak cepat lelah) */
+  color: #171717;
+  /* Membuat huruf terlihat lebih tajam di layar */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 4. Detail Kecil yang Manis */
+/* Coba blok (select) teks di websitemu nanti, warnanya akan jadi biru muda */
+::selection {
+  background-color: var(--color-brand-100);
+  color: var(--color-brand-700);
+}
+
+/* Scrollbar Kustom (Opsional - biar serasi) */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}

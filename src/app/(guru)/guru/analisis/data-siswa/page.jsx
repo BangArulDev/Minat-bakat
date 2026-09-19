@@ -13,63 +13,11 @@ import {
   MoreVertical,
   Eye
 } from "lucide-react";
-
-// --- MOCK DATA ---
-const initialData = [
-  {
-    id: 1,
-    nis: "20241001",
-    name: "Ahmad Rizki",
-    className: "X MIPA 1",
-    status: "Selesai", // Selesai | Proses | Belum
-    progress: 100, // Persentase
-    lastActivity: "12 Okt 2024, 10:30",
-    testType: "RIASEC"
-  },
-  {
-    id: 2,
-    nis: "20241002",
-    name: "Bunga Citra",
-    className: "X MIPA 1",
-    status: "Proses",
-    progress: 45, // Baru 45%
-    lastActivity: "Hari ini, 09:15",
-    testType: "RIASEC"
-  },
-  {
-    id: 3,
-    nis: "20241003",
-    name: "Candra Wijaya",
-    className: "XI IPS 2",
-    status: "Belum",
-    progress: 0,
-    lastActivity: "-",
-    testType: "-"
-  },
-  {
-    id: 4,
-    nis: "20241004",
-    name: "Dinda Kirana",
-    className: "X MIPA 2",
-    status: "Selesai",
-    progress: 100,
-    lastActivity: "Kemarin, 14:20",
-    testType: "VAK"
-  },
-  {
-    id: 5,
-    nis: "20241005",
-    name: "Eko Prasetyo",
-    className: "X MIPA 1",
-    status: "Proses",
-    progress: 80,
-    lastActivity: "10 mnt lalu",
-    testType: "RIASEC"
-  },
-];
+import { getStudents, getResults } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 export default function AnalisisDataSiswaPage() {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
   const [filterClass, setFilterClass] = useState("Semua Kelas");
   const [filterStatus, setFilterStatus] = useState("Semua Status");
@@ -78,12 +26,42 @@ export default function AnalisisDataSiswaPage() {
 
   // --- LOGIC ---
   
-  const handleRefresh = () => {
+  const loadData = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setOpenDropdownId(null);
-    }, 800);
+    const [studentsRes, resultsRes] = await Promise.all([getStudents(), getResults()]);
+    if (studentsRes?.success) {
+      const resultsMap = {};
+      if (resultsRes?.success) {
+        resultsRes.data.forEach(r => {
+          resultsMap[r.nis] = r; 
+        });
+      }
+      
+      const combined = studentsRes.data.map(s => {
+        const hasResult = resultsMap[s.nis];
+        return {
+          id: s.id,
+          nis: s.nis,
+          name: s.name,
+          className: s.className,
+          status: hasResult ? "Selesai" : "Belum",
+          progress: hasResult ? 100 : 0,
+          lastActivity: hasResult ? hasResult.date : "-",
+          testType: hasResult ? hasResult.testType : "-"
+        };
+      });
+      setData(combined);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleRefresh = () => {
+    loadData();
+    setOpenDropdownId(null);
   };
 
   const handleRemind = (name) => {

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -25,6 +26,10 @@ import {
 } from "lucide-react";
 
 export default function GuruLayout({ children }) {
+  const { data: session } = useSession();
+  const userName = session?.user?.name || "Memuat...";
+  const roleName = session?.user?.role === "GURU" ? "Guru BK" : "Admin";
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -301,8 +306,8 @@ export default function GuruLayout({ children }) {
 
         {/* Footer Sidebar */}
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <Link
-            href="/"
+          <button
+            onClick={() => signOut({ callbackUrl: '/login' })}
             className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
              ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
           `}
@@ -311,7 +316,7 @@ export default function GuruLayout({ children }) {
             {(isSidebarOpen || isMobile) && (
               <span className="font-medium text-sm">Keluar Akun</span>
             )}
-          </Link>
+          </button>
         </div>
       </motion.aside>
 
@@ -329,9 +334,9 @@ export default function GuruLayout({ children }) {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-bold text-gray-900">
-                Budi Santoso, S.Pd
+                {userName}
               </p>
-              <p className="text-xs text-gray-500">Guru BK</p>
+              <p className="text-xs text-gray-500">{roleName}</p>
             </div>
             <Link href="/guru/profil">
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 border border-gray-200">

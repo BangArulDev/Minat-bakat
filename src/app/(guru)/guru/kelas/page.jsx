@@ -23,18 +23,11 @@ import {
   Users,
   Download
 } from "lucide-react";
-
-// MOCK DATA: Contoh Data Kelas
-const initialClasses = [
-  { id: 1, code: "CLS-X-IPA1", name: "X MIPA 1", status: "active", createdAt: "20 Jan 2024", studentCount: 32 },
-  { id: 2, code: "CLS-X-IPA2", name: "X MIPA 2", status: "active", createdAt: "21 Jan 2024", studentCount: 30 },
-  { id: 3, code: "CLS-XI-IPS1", name: "XI IPS 1", status: "inactive", createdAt: "15 Jan 2023", studentCount: 28 },
-  { id: 4, code: "CLS-XII-BHS", name: "XII Bahasa", status: "active", createdAt: "10 Feb 2024", studentCount: 25 },
-];
+import { getClassrooms, saveClassroom, deleteClassroom } from "@/app/actions/guru";
 
 export default function KelasPage() {
-  const [data, setData] = useState(initialClasses);
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
 
@@ -54,12 +47,22 @@ export default function KelasPage() {
 
   // --- FUNGSI LOGIKA ---
 
-  const handleRefresh = () => {
+  const loadData = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setOpenDropdownId(null);
-    }, 800);
+    const res = await getClassrooms();
+    if (res?.success) {
+      setData(res.data);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleRefresh = () => {
+    loadData();
+    setOpenDropdownId(null);
   };
 
   const handleAddClick = () => {
@@ -75,22 +78,19 @@ export default function KelasPage() {
     setIsModalOpen(true);
   };
 
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
     if (!formData.code || !formData.name) {
       alert("Harap lengkapi Kode dan Nama Kelas!");
       return;
     }
 
-    if (isEditMode) {
-      setData(data.map(item => item.id === formData.id ? { ...formData } : item));
+    const res = await saveClassroom(formData);
+    if (res?.success) {
+      await loadData();
+      setIsModalOpen(false);
     } else {
-      const newItem = {
-        ...formData,
-        createdAt: new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }),
-      };
-      setData([newItem, ...data]);
+      alert("Gagal menyimpan kelas: " + res?.error);
     }
-    setIsModalOpen(false);
   };
 
   const handleDetailClick = (item) => {
@@ -115,11 +115,16 @@ export default function KelasPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      setData(data.filter((item) => item.id !== itemToDelete.id));
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
+      const res = await deleteClassroom(itemToDelete.id);
+      if (res?.success) {
+        await loadData();
+        setIsDeleteModalOpen(false);
+        setItemToDelete(null);
+      } else {
+        alert("Gagal menghapus kelas.");
+      }
     }
   };
 

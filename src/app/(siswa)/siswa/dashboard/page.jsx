@@ -1,5 +1,8 @@
 "use client";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { getSiswaDashboardData } from "@/app/actions/dashboard";
 import { 
   Hash, 
   BookOpen, 
@@ -14,27 +17,33 @@ import {
 } from "lucide-react";
 
 export default function DashboardSiswa() {
-  // --- MOCK DATA ---
-  const stats = {
-    classCode: "CLS-X-IPA1",
-    className: "X MIPA 1",
-    totalStudents: 32,
-    totalInstruments: 3, // Jumlah tes yang tersedia/ditugaskan
-  };
+  const { data: session } = useSession();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const studentData = {
-    nis: "20241001",
-    name: "Ahmad Rizki",
-    class: "X MIPA 1",
-    gender: "Laki-laki"
-  };
+  useEffect(() => {
+    async function loadData() {
+      if (session?.user) {
+        const res = await getSiswaDashboardData();
+        if (res?.success) {
+          setData(res.data);
+        }
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [session]);
 
-  const schoolData = {
-    name: "SMA Negeri 1 Harapan Bangsa",
-    province: "DKI Jakarta",
-    city: "Jakarta Selatan",
-    teacher: "Budi Santoso, S.Pd"
-  };
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><p className="text-gray-500 animate-pulse">Memuat data dashboard...</p></div>;
+  }
+
+  if (!data) {
+    return <div className="flex justify-center items-center h-64"><p className="text-red-500">Gagal memuat data dashboard.</p></div>;
+  }
+
+  const { stats, studentData, schoolData } = data;
+
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">

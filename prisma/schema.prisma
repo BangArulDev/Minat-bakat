@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String?  @unique
+  username  String?  @unique
+  password  String
+  role      String   // "GURU" or "SISWA"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacherProfile TeacherProfile?
+  studentProfile StudentProfile?
+}
+
+model TeacherProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  nip         String?
+  gender      String?
+  whatsapp    String?
+  schoolName  String
+  schoolCode  String?
+  quota       Int      @default(0)
+
+  classrooms  Classroom[]
+}
+
+model Classroom {
+  id          String   @id @default(uuid())
+  classCode   String   @unique
+  name        String
+  teacherId   String
+  teacher     TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  students    StudentProfile[]
+}
+
+model StudentProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  nis         String?
+  gender      String?
+  birthPlace  String?
+  birthDate   DateTime?
+  classroomId String
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  results     RiasecResult[]
+}
+
+model RiasecResult {
+  id            String   @id @default(uuid())
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  rawScores     String   // Disimpan sebagai JSON string
+  dominantCode  String
+  consistency   String?
+  createdAt     DateTime @default(now())
+}

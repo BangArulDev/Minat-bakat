@@ -9,6 +9,8 @@ import {
   FileSpreadsheet,
   AlertCircle
 } from "lucide-react";
+import { getResults, getClassrooms } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 // --- KONFIGURASI KOLOM TES ---
 const testConfigs = {
@@ -24,27 +26,56 @@ const testConfigs = {
   }
 };
 
-// --- MOCK DATA ---
-const initialData = [
-  { id: 1, nis: "20241001", name: "Ahmad Rizki", class: "X MIPA 1", scores: { R: 35, I: 20, A: 10, S: 15, E: 5, C: 25 }, dominant: "Realistic" },
-  { id: 2, nis: "20241002", name: "Bunga Citra", class: "X MIPA 1", scores: { R: 10, I: 15, A: 38, S: 20, E: 10, C: 5 }, dominant: "Artistic" },
-  { id: 3, nis: "20241003", name: "Candra Wijaya", class: "X MIPA 1", scores: { R: 15, I: 15, A: 10, S: 10, E: 32, C: 10 }, dominant: "Enterprising" },
-  { id: 4, nis: "20241004", name: "Dinda Kirana", class: "X MIPA 1", scores: { R: 20, I: 35, A: 15, S: 10, E: 10, C: 15 }, dominant: "Investigative" },
-  { id: 5, nis: "20241005", name: "Eko Prasetyo", class: "X MIPA 1", scores: { R: 30, I: 30, A: 10, S: 25, E: 20, C: 35 }, dominant: "Conventional" },
-];
-
 export default function TabulasiPage() {
-  const [selectedClass, setSelectedClass] = useState("X MIPA 1");
+  const [data, setData] = useState([]);
+  const [classList, setClassList] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("");
   const [selectedTest, setSelectedTest] = useState("RIASEC");
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    async function load() {
+      const [resultsRes, classesRes] = await Promise.all([getResults(), getClassrooms()]);
+      if (classesRes?.success) {
+        const cls = classesRes.data.map(c => c.name);
+        setClassList(cls);
+        if (cls.length > 0) {
+          setSelectedClass(cls[0]);
+        }
+      }
+      if (resultsRes?.success) {
+        const formatted = resultsRes.data.map(r => {
+          let scoresObj = {};
+          try {
+            if (typeof r.score === 'string' && r.score.startsWith('{')) {
+              scoresObj = JSON.parse(r.score);
+            }
+          } catch(e) {}
+          return {
+            id: r.id,
+            nis: r.nis,
+            name: r.name,
+            class: r.className,
+            testType: r.testType === "VAK (Gaya Belajar)" ? "VAK" : r.testType,
+            scores: scoresObj,
+            dominant: r.result
+          };
+        });
+        setData(formatted);
+      }
+    }
+    load();
+  }, []);
+
   // Konfigurasi kolom berdasarkan tes yang dipilih
-  const currentConfig = testConfigs[selectedTest];
+  const currentConfig = testConfigs[selectedTest] || testConfigs["RIASEC"];
 
   // Filter Data
-  const filteredData = initialData.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase()) || 
-    item.nis.includes(search)
+  const filteredData = data.filter(item => 
+    item.class === selectedClass && 
+    item.testType === selectedTest &&
+    (item.name?.toLowerCase().includes(search.toLowerCase()) || 
+    item.nis?.includes(search))
   );
 
   // Helper: Cek apakah ini skor tertinggi di baris tersebut
@@ -86,9 +117,7 @@ export default function TabulasiPage() {
             onChange={(e) => setSelectedClass(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
           >
-            <option>X MIPA 1</option>
-            <option>X MIPA 2</option>
-            <option>XI IPS 1</option>
+            {classList.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 

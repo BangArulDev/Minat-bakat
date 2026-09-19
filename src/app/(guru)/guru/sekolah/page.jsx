@@ -12,30 +12,48 @@ import {
   UploadCloud,
   Hash
 } from "lucide-react";
+import { getSchoolProfile, saveSchoolProfile } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 export default function SekolahPage() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // State Data Sekolah
   const [schoolData, setSchoolData] = useState({
-    name: "SMA Negeri 1 Harapan Bangsa",
-    npsn: "20100199", // Read-only (biasanya ID tidak boleh ganti)
-    address: "Jl. Pendidikan No. 45, RT.01/RW.02, Kebayoran Baru",
-    province: "DKI Jakarta",
-    regency: "Jakarta Selatan",
-    aliasCity: "Jakarta", // Untuk keperluan kop surat/tanggal surat
-    logo: null // URL gambar jika ada
+    name: "",
+    npsn: "",
+    address: "",
+    province: "",
+    regency: "",
+    aliasCity: "",
+    logo: null
   });
+
+  useEffect(() => {
+    async function load() {
+      const res = await getSchoolProfile();
+      if (res?.success) {
+        setSchoolData(res.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setSchoolData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsEditing(false);
-    // Logika simpan ke API bisa ditaruh di sini
-    alert("Data sekolah berhasil diperbarui!");
+    const res = await saveSchoolProfile(schoolData);
+    if (res?.success) {
+      alert("Data sekolah berhasil diperbarui!");
+    } else {
+      alert("Gagal menyimpan data.");
+    }
   };
 
   const handleLogoUpload = () => {

@@ -1,0 +1,72 @@
+{
+  "users": [
+    {
+      "id": "U-s4pjkx2mu87iqes",
+      "email": "amrullyarunhadi@gmail.com",
+      "username": "amrullyarunhadi@gmail.com",
+      "password": "$2b$10$QuGPL1qsfceHSgzS6TzpnuQCugpnw88JOId5vJdUVZmArxlzY/7eq",
+      "role": "GURU",
+      "profile": {
+        "fullName": "Amrully Arun Hadi",
+        "nip": "12345678",
+        "gender": "L",
+        "whatsapp": "08987654321",
+        "schoolName": "SMK YATPI GODONG",
+        "schoolCode": "SCH-IZCJ"
+      },
+      "createdAt": "2026-09-19T09:50:40.948Z"
+    },
+    {
+      "id": "U-g2gwdo4mu87s6y3",
+      "email": "bjr@gmail.com",
+      "username": "bjr@gmail.com",
+      "password": "$2b$10$qKscUp4VItMWuzhQMgaDp.GyqfgzaWWAZXnS/aTdyJtsk.h9JpodK",
+      "role": "GURU",
+      "profile": {
+        "fullName": "Bintang Berliani, S.Pd.",
+        "nip": "12345678",
+        "gender": "Perempuan",
+        "whatsapp": "0085169945830",
+        "schoolName": "SMA N 1 Pulokulon",
+        "schoolCode": "SCH-1DLY"
+      },
+      "createdAt": "2026-09-19T09:58:02.283Z"
+    },
+    {
+      "id": "U-86oqh8rmu8e4g74",
+      "email": "qwert@gmail.com",
+      "username": "qwert@gmail.com",
+      "password": "$2b$10$lRA.XSqGA2ZBf0p9RXjUke3mOJuJF8U9Q/oqzd7gDoLrPTWiJvX.2",
+      "role": "GURU",
+      "profile": {
+        "fullName": "SARIMIN",
+        "nip": "121212",
+        "gender": "L",
+        "whatsapp": "0987654321",
+        "schoolName": "SMA YATPI GODONG",
+        "schoolCode": "SCH-QK1J",
+        "address": "godong",
+        "province": "jawa tengah",
+        "regency": "grobogan",
+        "aliasCity": "grobogan",
+        "logo": null
+      },
+      "createdAt": "2026-09-19T12:55:31.840Z"
+    }
+  ],
+  "classrooms": [
+    {
+      "id": "1",
+      "classCode": "X-IPA-1",
+      "name": "X IPA 1",
+      "teacherId": "T-1"
+    },
+    {
+      "id": "2",
+      "classCode": "X-IPS-1",
+      "name": "X IPS 1",
+      "teacherId": "T-1"
+    }
+  ],
+  "results": []
+}

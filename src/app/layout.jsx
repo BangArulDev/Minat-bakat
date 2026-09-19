@@ -1,5 +1,6 @@
 import { Inter } from "next/font/google";
 import "@/styles/globals.css"
+import { Providers } from "@/components/Providers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,7 +16,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id" data-scroll-behavior="smooth">
       <body className={`${inter.variable} antialiased`}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

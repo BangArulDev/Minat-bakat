@@ -20,60 +20,12 @@ import {
   MapPin
 } from "lucide-react";
 
-// MOCK DATA: Contoh Data Siswa
-const initialStudents = [
-  {
-    id: 1,
-    nis: "20241001",
-    username: "20241001", // Username default sama dengan NIS
-    name: "Ahmad Rizki",
-    pob: "Jakarta",
-    dob: "12 Mei 2007",
-    gender: "L",
-    classCode: "CLS-X-IPA1",
-    className: "X MIPA 1",
-  },
-  {
-    id: 2,
-    nis: "20241002",
-    username: "20241002",
-    name: "Bunga Citra",
-    pob: "Bandung",
-    dob: "03 Ags 2007",
-    gender: "P",
-    classCode: "CLS-X-IPA1",
-    className: "X MIPA 1",
-  },
-  {
-    id: 3,
-    nis: "20241003",
-    username: "20241003",
-    name: "Candra Wijaya",
-    pob: "Surabaya",
-    dob: "20 Jan 2006",
-    gender: "L",
-    classCode: "CLS-XI-IPS2",
-    className: "XI IPS 2",
-  },
-  {
-    id: 4,
-    nis: "20241004",
-    username: "20241004",
-    name: "Dinda Kirana",
-    pob: "Medan",
-    dob: "15 Feb 2007",
-    gender: "P",
-    classCode: "CLS-X-IPA2",
-    className: "X MIPA 2",
-  },
-];
-
-// Opsi Kelas (Bisa diambil dari API nantinya)
-const classOptions = ["X MIPA 1", "X MIPA 2", "XI IPS 1", "XI IPS 2", "XII Bahasa"];
+import { getStudents, saveStudent, deleteStudent, getClassrooms } from "@/app/actions/guru";
 
 export default function SiswaPage() {
-  const [data, setData] = useState(initialStudents);
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [classOptions, setClassOptions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterClass, setFilterClass] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -97,12 +49,25 @@ export default function SiswaPage() {
 
   // --- FUNGSI LOGIKA ---
 
-  const handleRefresh = () => {
+  const loadData = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setOpenDropdownId(null);
-    }, 800);
+    const [studentsRes, classesRes] = await Promise.all([getStudents(), getClassrooms()]);
+    if (studentsRes?.success) {
+      setData(studentsRes.data);
+    }
+    if (classesRes?.success) {
+      setClassOptions(classesRes.data.map(c => c.name));
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleRefresh = () => {
+    loadData();
+    setOpenDropdownId(null);
   };
 
   // 1. Handle Tambah Data
@@ -118,7 +83,7 @@ export default function SiswaPage() {
       pob: "",
       dob: "",
       gender: "L",
-      className: "X MIPA 1"
+      className: classOptions.length > 0 ? classOptions[0] : ""
     });
     setIsModalOpen(true);
   };
@@ -132,28 +97,19 @@ export default function SiswaPage() {
   };
 
   // 3. Simpan Data (Add/Edit)
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
     if (!formData.name || !formData.pob || !formData.dob) {
       alert("Harap lengkapi semua data siswa!");
       return;
     }
 
-    if (isEditMode) {
-      // Update Data
-      setData(data.map(item => item.id === formData.id ? { 
-        ...formData, 
-        username: formData.nis // Username selalu sync dengan NIS
-      } : item));
+    const res = await saveStudent(formData);
+    if (res?.success) {
+      await loadData();
+      setIsModalOpen(false);
     } else {
-      // Create Data Baru
-      const newItem = {
-        ...formData,
-        username: formData.nis, // Username otomatis NIS
-        classCode: `CLS-${formData.className.replace(/\s/g, '-')}` // Generate kode kelas dummy
-      };
-      setData([newItem, ...data]);
+      alert("Gagal menyimpan data siswa: " + res?.error);
     }
-    setIsModalOpen(false);
   };
 
   // 4. Handle Delete
@@ -163,11 +119,16 @@ export default function SiswaPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      setData(data.filter((item) => item.id !== itemToDelete.id));
-      setIsDeleteModalOpen(false);
-      setItemToDelete(null);
+      const res = await deleteStudent(itemToDelete.id);
+      if (res?.success) {
+        await loadData();
+        setIsDeleteModalOpen(false);
+        setItemToDelete(null);
+      } else {
+        alert("Gagal menghapus siswa.");
+      }
     }
   };
 

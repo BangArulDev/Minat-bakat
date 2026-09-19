@@ -10,63 +10,25 @@ import {
   BarChart2,
   Calendar
 } from "lucide-react";
-
-// MOCK DATA: Contoh Hasil Tes Siswa
-const initialResults = [
-  {
-    id: 1,
-    nis: "20241001",
-    name: "Ahmad Rizki",
-    className: "X MIPA 1",
-    testType: "RIASEC",
-    date: "12 Okt 2024",
-    result: "Realistic", // Dominan
-    score: "R: 80, I: 40, A: 20...",
-    status: "Selesai",
-    color: "bg-red-100 text-red-700 border-red-200"
-  },
-  {
-    id: 2,
-    nis: "20241002",
-    name: "Bunga Citra",
-    className: "X MIPA 1",
-    testType: "VAK (Gaya Belajar)",
-    date: "12 Okt 2024",
-    result: "Visual",
-    score: "V: 90%, A: 5%, K: 5%",
-    status: "Selesai",
-    color: "bg-blue-100 text-blue-700 border-blue-200"
-  },
-  {
-    id: 3,
-    nis: "20241003",
-    name: "Candra Wijaya",
-    className: "XI IPS 2",
-    testType: "RIASEC",
-    date: "14 Okt 2024",
-    result: "Enterprising",
-    score: "E: 85, S: 70, C: 60...",
-    status: "Selesai",
-    color: "bg-purple-100 text-purple-700 border-purple-200"
-  },
-  {
-    id: 4,
-    nis: "20241005",
-    name: "Dinda Kirana",
-    className: "XII Bahasa",
-    testType: "Multiple Intelligence",
-    date: "15 Okt 2024",
-    result: "Musical",
-    score: "Musical: High",
-    status: "Selesai",
-    color: "bg-green-100 text-green-700 border-green-200"
-  },
-];
+import { getResults } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 export default function DataHasilPilihanPage() {
-  const [data, setData] = useState(initialResults);
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterTest, setFilterTest] = useState("Semua");
+
+  useEffect(() => {
+    async function load() {
+      const res = await getResults();
+      if (res?.success) {
+        setData(res.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, []);
 
   // Filter Logika
   const filteredData = data.filter(item => {

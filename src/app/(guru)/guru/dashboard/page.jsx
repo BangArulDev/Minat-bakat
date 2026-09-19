@@ -1,9 +1,39 @@
 "use client";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { Users, BookOpen, FileText, CreditCard, School, AlertTriangle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { getGuruDashboardData } from "@/app/actions/dashboard";
 
 export default function DashboardGuru() {
+  const { data: session } = useSession();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      if (session?.user) {
+        const res = await getGuruDashboardData();
+        if (res?.success) {
+          setData(res.data);
+        }
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [session]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><p className="text-gray-500 animate-pulse">Memuat data dashboard...</p></div>;
+  }
+
+  if (!data) {
+    return <div className="flex justify-center items-center h-64"><p className="text-red-500">Gagal memuat data dashboard.</p></div>;
+  }
+
+  const { stats, schoolData } = data;
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       
@@ -18,7 +48,7 @@ export default function DashboardGuru() {
         {/* Card Siswa */}
         <StatCard 
           title="Total Siswa" 
-          value="142" 
+          value={stats.totalStudents} 
           icon={Users} 
           color="text-blue-600" 
           bg="bg-blue-50" 
@@ -26,7 +56,7 @@ export default function DashboardGuru() {
         {/* Card Kelas */}
         <StatCard 
           title="Jumlah Kelas" 
-          value="6" 
+          value={stats.totalClassrooms} 
           icon={BookOpen} 
           color="text-purple-600" 
           bg="bg-purple-50" 
@@ -34,7 +64,7 @@ export default function DashboardGuru() {
         {/* Card Instrumen */}
         <StatCard 
           title="Item Instrumen" 
-          value="24" 
+          value={stats.totalInstruments} 
           icon={FileText} 
           color="text-orange-600" 
           bg="bg-orange-50" 
@@ -42,7 +72,7 @@ export default function DashboardGuru() {
         {/* Card Sisa Kuota */}
         <StatCard 
           title="Sisa Kuota" 
-          value="11" 
+          value={stats.quota} 
           icon={CreditCard} 
           color="text-green-600" 
           bg="bg-green-50" 
@@ -67,7 +97,7 @@ export default function DashboardGuru() {
                 <AlertTriangle className="text-yellow-600 shrink-0" size={20} />
                 <div className="space-y-2">
                   <p className="text-sm text-yellow-800 font-medium">
-                    Siswa kuota Anda adalah <strong className="text-black text-base">11</strong>.
+                    Sisa kuota Anda adalah <strong className="text-black text-base">{stats.quota}</strong>.
                   </p>
                   <p className="text-xs text-yellow-700 leading-relaxed">
                     Kuota akan terus berkurang saat menambahkan siswa atau saat siswa mendaftar pada kelas tertentu. 
@@ -95,11 +125,11 @@ export default function DashboardGuru() {
              </div>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
-                <InfoItem label="Kode / ID Sekolah" value="SCH-2024-8891" />
-                <InfoItem label="Nama Sekolah" value="SMA Negeri 1 Harapan Bangsa" />
-                <InfoItem label="Alamat" value="Jl. Pendidikan No. 45" />
-                <InfoItem label="Kota / Kab." value="Jakarta Selatan" />
-                <InfoItem label="Provinsi" value="DKI Jakarta" />
+                <InfoItem label="Kode / ID Sekolah" value={schoolData.schoolCode} />
+                <InfoItem label="Nama Sekolah" value={schoolData.name} />
+                <InfoItem label="Alamat" value={schoolData.address} />
+                <InfoItem label="Kota / Kab." value={schoolData.city} />
+                <InfoItem label="Provinsi" value={schoolData.province} />
              </div>
           </div>
 

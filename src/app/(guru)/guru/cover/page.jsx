@@ -8,6 +8,8 @@ import {
   RefreshCcw,
   Check
 } from "lucide-react";
+import { getSchoolProfile } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 export default function CoverLaporanPage() {
   // --- STATE SETTINGS (Default Value) ---
@@ -25,6 +27,22 @@ export default function CoverLaporanPage() {
   });
 
   const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const res = await getSchoolProfile();
+      if (res?.success) {
+        setSettings(prev => ({
+          ...prev,
+          schoolName: res.data.name || prev.schoolName,
+          schoolAddress: res.data.address || prev.schoolAddress,
+          city: res.data.aliasCity || prev.city,
+          logoUrl: res.data.logo || prev.logoUrl
+        }));
+      }
+    }
+    load();
+  }, []);
 
   // Handle Perubahan Input Form
   const handleChange = (e) => {

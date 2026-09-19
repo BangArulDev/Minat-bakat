@@ -16,53 +16,26 @@ import {
   Printer,
   X
 } from "lucide-react";
-
-// --- MOCK DATA TRANSAKSI ---
-const initialTransactions = [
-  {
-    id: "TRX-20241025-001",
-    date: "25 Okt 2024, 14:30",
-    service: "Paket Classroom (50 Kuota)",
-    price: 111000, // Termasuk PPN
-    method: "QRIS",
-    status: "success", // success | pending | failed
-    paymentDate: "25 Okt 2024, 14:32",
-    imgUrl: "/placeholder-receipt.jpg" 
-  },
-  {
-    id: "TRX-20241020-002",
-    date: "20 Okt 2024, 09:15",
-    service: "Paket Starter (20 Kuota)",
-    price: 55500,
-    method: "Virtual Account BCA",
-    status: "success",
-    paymentDate: "20 Okt 2024, 09:20",
-  },
-  {
-    id: "TRX-20241015-003",
-    date: "15 Okt 2024, 10:00",
-    service: "Paket School (150 Kuota)",
-    price: 277500,
-    method: "Transfer Bank",
-    status: "pending", // Belum bayar
-    paymentDate: "-",
-  },
-  {
-    id: "TRX-20240901-004",
-    date: "01 Sep 2024, 11:00",
-    service: "Paket Starter (20 Kuota)",
-    price: 55500,
-    method: "Alfamart",
-    status: "failed", // Kadaluarsa
-    paymentDate: "-",
-  },
-];
+import { getTransactions } from "@/app/actions/guru";
+import { useEffect } from "react";
 
 export default function TransaksiPage() {
-  const [data, setData] = useState(initialTransactions);
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Semua");
   const [selectedTx, setSelectedTx] = useState(null); // Untuk Modal
+
+  useEffect(() => {
+    async function load() {
+      const res = await getTransactions();
+      if (res?.success) {
+        setData(res.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, []);
 
   // Format Rupiah
   const formatRp = (num) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
@@ -139,8 +112,8 @@ export default function TransaksiPage() {
                     {/* Kolom Tanggal */}
                     <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                       <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{item.date.split(',')[0]}</span>
-                        <span className="text-xs text-gray-400">{item.date.split(',')[1]}</span>
+                        <span className="font-medium text-gray-900">{item.date?.split(',')[0]}</span>
+                        <span className="text-xs text-gray-400">{item.date?.split(',')[1]}</span>
                       </div>
                     </td>
 

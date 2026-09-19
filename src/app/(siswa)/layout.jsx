@@ -9,7 +9,9 @@ import {
   UserCircle, 
   LogOut, 
   X,
-  Sparkles 
+  Sparkles,
+  ClipboardList,
+  Trophy, 
 } from "lucide-react";
 
 export default function SiswaLayout({ children }) {
@@ -33,9 +35,11 @@ export default function SiswaLayout({ children }) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // --- MENU NAVIGASI SISWA (Hanya Dashboard) ---
+  // --- MENU NAVIGASI SISWA ---
   const navItems = [
     { name: "Dashboard", href: "/siswa/dashboard", icon: LayoutDashboard },
+    { name: "Tes RIASEC", href: "/siswa/tes-riasec", icon: ClipboardList },
+    { name: "Hasil Tes", href: "/siswa/hasil-riasec", icon: Trophy },
   ];
 
   return (

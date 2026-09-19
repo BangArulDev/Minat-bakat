@@ -5,22 +5,30 @@ import {
   Plus, RefreshCw, Search, MoreVertical, Edit, Trash2, Filter, 
   X, Save, Hash, List, Type, AlertTriangle 
 } from "lucide-react";
+import { riasecQuestions } from "@/data/riasecQuestions";
+import { riasecSelfEstimate } from "@/data/riasecSelfEstimate";
 
-// MOCK DATA
-const initialQuestions = [
-  { id: 1, question: "Saya suka memperbaiki alat-alat listrik atau mesin kendaraan.", field: "Realistic" },
-  { id: 2, question: "Saya senang membaca buku tentang sains dan teknologi.", field: "Investigative" },
-  { id: 3, question: "Saya suka melukis, menggambar, atau bermain musik di waktu luang.", field: "Artistic" },
-  { id: 4, question: "Saya merasa senang jika bisa membantu teman yang sedang kesulitan.", field: "Social" },
-  { id: 5, question: "Saya suka memimpin diskusi kelompok atau menjadi ketua kelas.", field: "Enterprising" },
-  { id: 6, question: "Saya suka menyusun jadwal kegiatan agar teratur dan rapi.", field: "Conventional" },
+// Gabungkan soal utama + self-estimate, format seragam
+const allItems = [
+  ...riasecQuestions.map(q => ({
+    id: q.id,
+    question: q.statement,
+    field: q.type === "R" ? "Realistic" : q.type === "I" ? "Investigative" : q.type === "A" ? "Artistic" : q.type === "S" ? "Social" : q.type === "E" ? "Enterprising" : "Conventional",
+    group: q.group,
+  })),
+  ...riasecSelfEstimate.map(se => ({
+    id: 216 + se.id,
+    question: se.field,
+    field: se.type === "R" ? "Realistic" : se.type === "I" ? "Investigative" : se.type === "A" ? "Artistic" : se.type === "S" ? "Social" : se.type === "E" ? "Enterprising" : "Conventional",
+    group: `Self Estimate - ${se.aspect}`,
+  })),
 ];
 
 const fieldOptions = ["Realistic", "Investigative", "Artistic", "Social", "Enterprising", "Conventional"];
 
 export default function InstrumenPage() {
   // Mengurutkan data awal berdasarkan ID
-  const [data, setData] = useState(initialQuestions.sort((a, b) => a.id - b.id));
+  const [data, setData] = useState([...allItems].sort((a, b) => a.id - b.id));
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -44,7 +52,7 @@ export default function InstrumenPage() {
     setIsLoading(true);
     setTimeout(() => {
       // Reset ke data awal dan acak sedikit urutannya sebagai simulasi fetch
-      setData([...initialQuestions].sort((a, b) => a.id - b.id));
+      setData([...allItems].sort((a, b) => a.id - b.id));
       setIsLoading(false);
       setOpenDropdownId(null);
     }, 1000);

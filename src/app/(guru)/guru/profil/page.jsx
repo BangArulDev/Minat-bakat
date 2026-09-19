@@ -1,5 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { getUserProfile, updateUserProfile } from "@/app/actions/auth";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
@@ -17,18 +19,39 @@ import {
 } from "lucide-react";
 
 export default function ProfilGuruPage() {
+  const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // State Data Profil
   const [profile, setProfile] = useState({
-    name: "Budi Santoso, S.Pd",
-    nip: "19850101 201001 1 001",
-    gender: "Laki-laki",
-    phone: "0812-3456-7890",
-    email: "budi.santoso@sekolah.sch.id",
+    name: "Memuat...",
+    nip: "-",
+    gender: "-",
+    phone: "-",
+    email: "-",
     role: "Guru BK",
-    school: "SMA Negeri 1 Harapan Bangsa"
+    school: "-"
   });
+
+  useEffect(() => {
+    if (session?.user?.username) {
+      getUserProfile(session.user.username).then((res) => {
+        if (res.success && res.profile) {
+          setProfile({
+            name: res.profile.fullName || "-",
+            nip: res.profile.nip || "-",
+            gender: res.profile.gender || "-",
+            phone: res.profile.whatsapp || "-",
+            email: res.profile.email || "-",
+            role: res.profile.role === "GURU" ? "Guru BK" : res.profile.role,
+            school: res.profile.schoolName || "-"
+          });
+        }
+        setLoading(false);
+      });
+    }
+  }, [session]);
 
   // State Kuota (Mockup)
   const quota = {
@@ -42,10 +65,16 @@ export default function ProfilGuruPage() {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Di sini nanti ada logika API request untuk simpan data
-    alert("Perubahan berhasil disimpan!");
+  const handleSave = async () => {
+    if (!session?.user?.username) return;
+    
+    const res = await updateUserProfile(session.user.username, profile);
+    if (res.success) {
+      setIsEditing(false);
+      alert("Perubahan berhasil disimpan!");
+    } else {
+      alert(res.error || "Gagal menyimpan data.");
+    }
   };
 
   return (
@@ -143,11 +172,12 @@ export default function ProfilGuruPage() {
               </h3>
               <button 
                 onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                disabled={loading}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
                   ${isEditing 
                     ? "bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200" 
                     : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }
+                  } disabled:opacity-50
                 `}
               >
                 {isEditing ? (

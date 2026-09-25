@@ -68,6 +68,22 @@
         "schoolCode": "SCH-7EN6"
       },
       "createdAt": "2026-09-25T07:39:53.716Z"
+    },
+    {
+      "id": "U-x5vu803muha5ahg",
+      "username": "260101",
+      "email": "260101@siswa.local",
+      "password": "$2b$10$Z7k1F7VeLWa0ItK.xFrreemSxbvfDZDZzOznTu5wvOiic.HT0icJG",
+      "role": "SISWA",
+      "profile": {
+        "fullName": "badrun",
+        "nis": "260101",
+        "gender": "L",
+        "birthPlace": "grobogan",
+        "birthDate": "14 april 2000",
+        "classroomId": "CLS-ID-votoyxlmuha4ada"
+      },
+      "createdAt": "2026-09-25T18:14:08.212Z"
     }
   ],
   "classrooms": [
@@ -82,6 +98,14 @@
       "classCode": "X-IPS-1",
       "name": "X IPS 1",
       "teacherId": "T-1"
+    },
+    {
+      "id": "CLS-ID-votoyxlmuha4ada",
+      "classCode": "X TKJ 1",
+      "name": "X TKJ 1",
+      "teacherId": "U-s4pjkx2mu87iqes",
+      "status": "active",
+      "createdAt": "26 Sep 2026"
     }
   ],
   "results": []

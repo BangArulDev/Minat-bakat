@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { motion } from "framer-motion";
 import { 
   LayoutDashboard, 
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 
 export default function SiswaLayout({ children }) {
+  const { data: session } = useSession();
   // --- STATE & LOGIC (Sama persis dengan Guru) ---
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -108,12 +110,14 @@ export default function SiswaLayout({ children }) {
 
         {/* Footer Sidebar (Logout) */}
         <div className="p-4 border-t border-gray-100 shrink-0">
-          <Link href="/" className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
+          <button 
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
              ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
           `}>
             <LogOut size={22} />
             {(isSidebarOpen || isMobile) && <span className="font-medium">Keluar</span>}
-          </Link>
+          </button>
         </div>
       </motion.aside>
 
@@ -133,8 +137,8 @@ export default function SiswaLayout({ children }) {
           {/* Profil Siswa */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-900">Ahmad Rizki</p>
-              <p className="text-xs text-gray-500">Kelas X MIPA 1</p>
+              <p className="text-sm font-bold text-gray-900">{session?.user?.name || "Siswa"}</p>
+              <p className="text-xs text-gray-500">Siswa Aktif</p>
             </div>
             <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 border border-blue-100">
               <UserCircle size={28} />

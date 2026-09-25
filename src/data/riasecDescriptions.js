@@ -1,6 +1,8 @@
 // Deskripsi lengkap setiap tipe Holland RIASEC
 // Digunakan di halaman hasil tes
 
+import { Wrench, FlaskConical, Palette, HeartHandshake, Briefcase, Calculator } from "lucide-react";
+
 export const riasecDescriptions = {
   R: {
     name: "Realistic",
@@ -8,6 +10,7 @@ export const riasecDescriptions = {
     color: "#ef4444",
     colorLight: "#fef2f2",
     emoji: "🔧",
+    icon: Wrench,
     shortDesc: "Praktis & Teknis",
     description:
       "Kamu menyukai aktivitas fisik dan pekerjaan nyata yang menghasilkan sesuatu. Kamu lebih suka bekerja dengan tangan, alat, mesin, atau benda konkret daripada duduk di meja. Kamu memiliki keterampilan teknis dan mekanik yang baik.",
@@ -27,6 +30,7 @@ export const riasecDescriptions = {
     color: "#8b5cf6",
     colorLight: "#f5f3ff",
     emoji: "🔬",
+    icon: FlaskConical,
     shortDesc: "Analitis & Ilmiah",
     description:
       "Kamu senang berpikir, menganalisis, dan memecahkan masalah. Kamu tertarik pada ilmu pengetahuan, data, dan penelitian. Kamu lebih suka mengamati, belajar, dan menyelidiki daripada bertindak langsung.",
@@ -46,6 +50,7 @@ export const riasecDescriptions = {
     color: "#f59e0b",
     colorLight: "#fffbeb",
     emoji: "🎨",
+    icon: Palette,
     shortDesc: "Kreatif & Ekspresif",
     description:
       "Kamu memiliki jiwa kreatif dan suka mengekspresikan diri melalui seni, desain, musik, atau tulisan. Kamu menyukai kebebasan, orisinalitas, dan lingkungan yang tidak terlalu terstruktur.",
@@ -65,6 +70,7 @@ export const riasecDescriptions = {
     color: "#10b981",
     colorLight: "#ecfdf5",
     emoji: "🤝",
+    icon: HeartHandshake,
     shortDesc: "Suka Membantu & Mengajar",
     description:
       "Kamu senang berinteraksi, membantu, mengajar, dan membimbing orang lain. Kamu memiliki empati tinggi dan kemampuan komunikasi yang baik. Kamu paling bersemangat saat bisa membuat perbedaan positif bagi orang lain.",
@@ -84,6 +90,7 @@ export const riasecDescriptions = {
     color: "#3b82f6",
     colorLight: "#eff6ff",
     emoji: "💼",
+    icon: Briefcase,
     shortDesc: "Pemimpin & Persuasif",
     description:
       "Kamu suka memimpin, memengaruhi, dan meyakinkan orang lain. Kamu ambisius, percaya diri, dan berani mengambil risiko. Kamu tertarik pada dunia bisnis, manajemen, dan kewirausahaan.",
@@ -103,6 +110,7 @@ export const riasecDescriptions = {
     color: "#06b6d4",
     colorLight: "#ecfeff",
     emoji: "📊",
+    icon: Calculator,
     shortDesc: "Terstruktur & Terorganisir",
     description:
       "Kamu menyukai pekerjaan yang terstruktur, teratur, dan detail. Kamu teliti, terorganisir, dan suka bekerja dengan data, angka, atau dokumen. Kamu lebih nyaman dengan sistem dan prosedur yang jelas.",

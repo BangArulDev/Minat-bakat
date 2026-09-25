@@ -1,5 +1,5 @@
 "use server";
-import { getDB } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 export async function getSiswaDashboardData() {
@@ -7,50 +7,58 @@ export async function getSiswaDashboardData() {
     const session = await auth();
     if (!session?.user) return { error: "Not authenticated" };
 
-    const db = getDB();
-    const user = db.users.find(u => u.id === session.user.id || u.username === session.user.username);
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        studentProfile: {
+          include: {
+            classroom: {
+              include: {
+                teacher: true,
+                _count: { select: { students: true } }
+              }
+            }
+          }
+        }
+      }
+    });
     
-    if (!user || user.role !== "SISWA") return { error: "User not found or not a siswa" };
-
-    const classroom = db.classrooms.find(c => c.id === user.profile.classroomId);
-    
-    const totalStudents = db.users.filter(u => u.role === "SISWA" && u.profile.classroomId === classroom?.id).length;
-    
-    let teacher = db.users.find(u => u.id === classroom?.teacherId);
-    if (!teacher) {
-      teacher = db.users.find(u => u.role === "GURU");
+    if (!user || user.role !== "SISWA" || !user.studentProfile) {
+      return { error: "User not found or not a siswa" };
     }
 
-    // Hitung instrumen / riasec results? (Biarkan 3 untuk sekarang sesuai dummy)
-    
+    const profile = user.studentProfile;
+    const classroom = profile.classroom;
+    const teacherProfile = classroom?.teacher;
+
     return {
       success: true,
       data: {
         stats: {
           classCode: classroom?.classCode || "-",
           className: classroom?.name || "-",
-          totalStudents: totalStudents || 0,
+          totalStudents: classroom?._count?.students || 0,
           totalInstruments: 3, 
         },
         studentData: {
-          nis: user.profile.nis || "-",
-          name: user.profile.fullName || user.username,
+          nis: profile.nis || "-",
+          name: profile.fullName || user.username,
           class: classroom?.name || "-",
-          gender: user.profile.gender === "L" || user.profile.gender?.toLowerCase() === "laki-laki" ? "Laki-laki" : 
-                  user.profile.gender === "P" || user.profile.gender?.toLowerCase() === "perempuan" ? "Perempuan" : 
-                  user.profile.gender || "-"
+          gender: profile.gender === "L" || profile.gender?.toLowerCase() === "laki-laki" ? "Laki-laki" : 
+                  profile.gender === "P" || profile.gender?.toLowerCase() === "perempuan" ? "Perempuan" : 
+                  profile.gender || "-"
         },
         schoolData: {
-          name: teacher?.profile?.schoolName || "-",
-          province: "Jawa Tengah", // Fallback, tidak ada di DB saat ini
-          city: "Kab. Grobogan", // Fallback, tidak ada di DB saat ini
-          teacher: teacher?.profile?.fullName || "-"
+          name: teacherProfile?.schoolName || "-",
+          province: "Jawa Tengah", // Fallback
+          city: "Kab. Grobogan", // Fallback
+          teacher: teacherProfile?.fullName || "-"
         }
       }
     };
   } catch (error) {
     console.error(error);
-    return { error: "Gagal memuat data." };
+    return { error: "Gagal memuat data dashboard siswa." };
   }
 }
 
@@ -59,29 +67,40 @@ export async function getGuruDashboardData() {
     const session = await auth();
     if (!session?.user) return { error: "Not authenticated" };
 
-    const db = getDB();
-    const user = db.users.find(u => u.id === session.user.id || u.username === session.user.username);
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        teacherProfile: {
+          include: {
+            classrooms: {
+              include: {
+                _count: { select: { students: true } }
+              }
+            }
+          }
+        }
+      }
+    });
     
-    if (!user || user.role !== "GURU") return { error: "User not found or not a guru" };
+    if (!user || user.role !== "GURU" || !user.teacherProfile) {
+      return { error: "User not found or not a guru" };
+    }
 
-    const classrooms = db.classrooms.filter(c => c.teacherId === user.id);
-    const classroomIds = classrooms.map(c => c.id);
-    
-    // Students that belong to any of this teacher's classrooms
-    const students = db.users.filter(u => u.role === "SISWA" && classroomIds.includes(u.profile?.classroomId));
-    
+    const profile = user.teacherProfile;
+    const totalStudents = profile.classrooms.reduce((acc, curr) => acc + curr._count.students, 0);
+
     return {
       success: true,
       data: {
         stats: {
-          totalStudents: students.length,
-          totalClassrooms: classrooms.length,
-          totalInstruments: 3, // Default or fetch from somewhere
-          quota: 0, // In db user profile quota doesn't exist, we fallback to 0 or some logic
+          totalStudents: totalStudents,
+          totalClassrooms: profile.classrooms.length,
+          totalInstruments: 3, // Default
+          quota: profile.quota || 0,
         },
         schoolData: {
-          schoolCode: user.profile?.schoolCode || "-",
-          name: user.profile?.schoolName || "-",
+          schoolCode: profile.schoolCode || "-",
+          name: profile.schoolName || "-",
           address: "-", // Fallback
           city: "-", // Fallback
           province: "-", // Fallback
@@ -90,6 +109,6 @@ export async function getGuruDashboardData() {
     };
   } catch (error) {
     console.error(error);
-    return { error: "Gagal memuat data." };
+    return { error: "Gagal memuat data dashboard guru." };
   }
 }

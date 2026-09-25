@@ -336,7 +336,7 @@ function IntroStep() {
                   style={{ backgroundColor: desc.colorLight }}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{desc.emoji}</span>
+                    <desc.icon size={20} style={{ color: desc.color }} />
                     <span
                       className="font-bold text-sm"
                       style={{ color: desc.color }}

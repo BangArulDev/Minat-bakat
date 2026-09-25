@@ -233,7 +233,7 @@ export default function HasilRiasecPage() {
                   className="flex items-center gap-2"
                 >
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-2xl font-bold">
-                    {desc.emoji}
+                    <desc.icon size={32} />
                   </div>
                   <div>
                     <p className="font-bold text-lg">{type}</p>
@@ -315,7 +315,7 @@ export default function HasilRiasecPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">{desc.emoji}</span>
+                      <desc.icon size={16} style={{ color: desc.color }} />
                       <span className="font-semibold text-sm text-gray-900">
                         {desc.name}
                       </span>
@@ -369,7 +369,7 @@ export default function HasilRiasecPage() {
                   className="px-5 py-4 flex items-center gap-3"
                   style={{ backgroundColor: desc.colorLight }}
                 >
-                  <span className="text-2xl">{desc.emoji}</span>
+                  <desc.icon size={28} style={{ color: desc.color }} />
                   <div>
                     <p className="font-bold" style={{ color: desc.color }}>
                       {desc.name}
@@ -544,19 +544,19 @@ function RadarChart({ percentages }) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      // Emoji
-      ctx.font = "16px sans-serif";
-      ctx.fillText(riasecDescriptions[type].emoji, lx, ly - 10);
+      // Emoji (Removed in favor of letter below)
+      // ctx.font = "16px sans-serif";
+      // ctx.fillText(riasecDescriptions[type].emoji, lx, ly - 10);
 
       // Type letter
-      ctx.font = "bold 13px Inter, sans-serif";
+      ctx.font = "bold 14px Inter, sans-serif";
       ctx.fillStyle = riasecDescriptions[type].color;
-      ctx.fillText(type, lx, ly + 6);
+      ctx.fillText(type, lx, ly - 2);
 
       // Percentage
       ctx.font = "11px Inter, sans-serif";
       ctx.fillStyle = "#6b7280";
-      ctx.fillText(`${percentages[type]}%`, lx, ly + 20);
+      ctx.fillText(`${percentages[type]}%`, lx, ly + 14);
     });
   }, [percentages]);
 

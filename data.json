@@ -52,6 +52,22 @@
         "logo": null
       },
       "createdAt": "2026-09-19T12:55:31.840Z"
+    },
+    {
+      "id": "U-3a7wpa0mugnhng4",
+      "email": "coba@gmail.com",
+      "username": "coba@gmail.com",
+      "password": "$2b$10$r1q8ujHVgDSoGgVS0gNi6OFM2LtFvAuh4vbnpOMqLuJUDPwHS0R5.",
+      "role": "GURU",
+      "profile": {
+        "fullName": "Amrully Arun Hadi",
+        "nip": "12345678",
+        "gender": "L",
+        "whatsapp": "08987654321",
+        "schoolName": "SMK YATPI GODONG",
+        "schoolCode": "SCH-7EN6"
+      },
+      "createdAt": "2026-09-25T07:39:53.716Z"
     }
   ],
   "classrooms": [

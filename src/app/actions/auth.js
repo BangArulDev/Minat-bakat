@@ -1,126 +1,164 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { getDB, saveDB, generateId } from "@/lib/db";
+import { prisma } from "@/lib/prisma";
 
 export async function registerGuru(data) {
   try {
-    const db = getDB();
-    
     // Cek apakah email sudah ada
-    if (db.users.find(u => u.email === data.email)) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email }
+    });
+
+    if (existingUser) {
       return { error: "Email sudah terdaftar!" };
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const newId = "U-" + generateId();
 
-    const newUser = {
-      id: newId,
-      email: data.email,
-      username: data.email,
-      password: hashedPassword,
-      role: "GURU",
-      profile: {
-        fullName: data.namaLengkap,
-        nip: data.nip || null,
-        gender: data.gender,
-        whatsapp: data.whatsapp || null,
-        schoolName: data.namaSekolah,
-        schoolCode: data.kodeSekolah,
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    db.users.push(newUser);
-    saveDB(db);
+    await prisma.user.create({
+      data: {
+        email: data.email,
+        username: data.email,
+        password: hashedPassword,
+        role: "GURU",
+        teacherProfile: {
+          create: {
+            fullName: data.namaLengkap,
+            nip: data.nip || null,
+            gender: data.gender || null,
+            whatsapp: data.whatsapp || null,
+            schoolName: data.namaSekolah,
+            schoolCode: data.kodeSekolah || null,
+          }
+        }
+      }
+    });
 
     return { success: true };
   } catch (error) {
-    console.error(error);
+    console.error("Error registerGuru:", error);
     return { error: "Gagal mendaftar. Silakan coba lagi." };
   }
 }
 
 export async function registerSiswa(data) {
   try {
-    const db = getDB();
-    
-    if (db.users.find(u => u.username === data.username)) {
+    // Cek apakah username sudah ada
+    const existingUser = await prisma.user.findUnique({
+      where: { username: data.username }
+    });
+
+    if (existingUser) {
       return { error: "Username sudah digunakan!" };
     }
 
-    const classroom = db.classrooms.find(c => c.classCode === data.kodeKelas);
+    // Cari kelas
+    const classroom = await prisma.classroom.findUnique({
+      where: { classCode: data.kodeKelas }
+    });
+
     if (!classroom) {
       return { error: "Kode Kelas tidak ditemukan! (Gunakan contoh: X-IPA-1 atau X-IPS-1)" };
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const newId = "U-" + generateId();
 
-    const newUser = {
-      id: newId,
-      username: data.username,
-      email: `${data.username}@siswa.local`,
-      password: hashedPassword,
-      role: "SISWA",
-      profile: {
-        fullName: data.namaLengkap,
-        nis: data.nis || null,
-        gender: data.jenisKelamin,
-        birthPlace: data.kotaLahir || null,
-        birthDate: data.tanggalLahir || null,
-        classroomId: classroom.id,
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    db.users.push(newUser);
-    saveDB(db);
+    await prisma.user.create({
+      data: {
+        username: data.username,
+        email: `${data.username}@siswa.local`, // Email placeholder untuk siswa
+        password: hashedPassword,
+        role: "SISWA",
+        studentProfile: {
+          create: {
+            fullName: data.namaLengkap,
+            nis: data.nis || null,
+            gender: data.jenisKelamin || null,
+            birthPlace: data.kotaLahir || null,
+            birthDate: data.tanggalLahir ? new Date(data.tanggalLahir) : null,
+            classroomId: classroom.id,
+          }
+        }
+      }
+    });
 
     return { success: true };
   } catch (error) {
-    console.error(error);
+    console.error("Error registerSiswa:", error);
     return { error: "Gagal mendaftar. Silakan coba lagi." };
   }
 }
 
 export async function getUserProfile(username) {
   try {
-    const db = getDB();
-    const user = db.users.find(u => u.username === username || u.email === username);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ username: username }, { email: username }]
+      },
+      include: {
+        teacherProfile: true,
+        studentProfile: true
+      }
+    });
+
     if (!user) return { error: "User tidak ditemukan" };
-    return { success: true, profile: { ...user.profile, email: user.email, role: user.role } };
+
+    const profile = user.role === "GURU" ? user.teacherProfile : user.studentProfile;
+    
+    return { 
+      success: true, 
+      profile: { ...profile, email: user.email, role: user.role } 
+    };
   } catch (error) {
+    console.error("Error getUserProfile:", error);
     return { error: "Gagal mengambil data." };
   }
 }
 
 export async function updateUserProfile(username, data) {
   try {
-    const db = getDB();
-    const userIndex = db.users.findIndex(u => u.username === username || u.email === username);
-    
-    if (userIndex === -1) return { error: "User tidak ditemukan" };
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ username: username }, { email: username }]
+      },
+      include: {
+        teacherProfile: true,
+        studentProfile: true
+      }
+    });
 
-    const user = db.users[userIndex];
-    user.profile = {
-      ...user.profile,
-      fullName: data.name || user.profile.fullName,
-      nip: data.nip !== undefined ? data.nip : user.profile.nip,
-      gender: data.gender || user.profile.gender,
-      whatsapp: data.phone !== undefined ? data.phone : user.profile.whatsapp,
-    };
-    
-    if (data.email && data.email !== user.email) {
-      user.email = data.email;
-      if (user.role === "GURU") user.username = data.email;
+    if (!user) return { error: "User tidak ditemukan" };
+
+    if (user.role === "GURU" && user.teacherProfile) {
+      await prisma.teacherProfile.update({
+        where: { id: user.teacherProfile.id },
+        data: {
+          fullName: data.name || undefined,
+          nip: data.nip !== undefined ? data.nip : undefined,
+          gender: data.gender || undefined,
+          whatsapp: data.phone !== undefined ? data.phone : undefined,
+        }
+      });
+      if (data.email && data.email !== user.email) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { email: data.email, username: data.email }
+        });
+      }
+    } else if (user.role === "SISWA" && user.studentProfile) {
+      await prisma.studentProfile.update({
+        where: { id: user.studentProfile.id },
+        data: {
+          fullName: data.name || undefined,
+          gender: data.gender || undefined,
+        }
+      });
     }
 
-    db.users[userIndex] = user;
-    saveDB(db);
     return { success: true };
   } catch (error) {
+    console.error("Error updateUserProfile:", error);
     return { error: "Gagal menyimpan data profil." };
   }
 }

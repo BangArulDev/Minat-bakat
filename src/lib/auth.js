@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { getDB } from "./db";
+import { prisma } from "./prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -16,24 +16,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
-        const db = getDB();
-        
-        // Cari user berdasarkan email ATAU username, sesuai rolenya
-        const user = db.users.find(u => 
-          (u.username === credentials.username || u.email === credentials.username) &&
-          (!credentials.userType || u.role === credentials.userType.toUpperCase())
-        );
+        // Cari user berdasarkan email ATAU username dari database Prisma
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.username },
+              { username: credentials.username }
+            ],
+            // Jika userType (role) dikirim, maka cocokkan. Jika tidak, abaikan.
+            ...(credentials.userType && { role: credentials.userType.toUpperCase() })
+          },
+          include: {
+            teacherProfile: true,
+            studentProfile: true
+          }
+        });
 
         if (!user) return null;
 
+        // Cek password hash dengan bcrypt
         const passwordsMatch = await bcrypt.compare(credentials.password, user.password);
         if (!passwordsMatch) return null;
+
+        // Tentukan nama lengkap berdasarkan role
+        const fullName = user.teacherProfile?.fullName 
+                      || user.studentProfile?.fullName 
+                      || "Pengguna";
 
         return {
           id: user.id,
           email: user.email,
           username: user.username,
-          name: user.profile?.fullName || "Pengguna",
+          name: fullName,
           role: user.role,
         };
       }
@@ -41,6 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // Saat login pertama kali, 'user' tersedia
       if (user) {
         token.role = user.role;
         token.id = user.id;
@@ -49,6 +64,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
+      // Masukkan properti token ke dalam session agar bisa diakses di klien
       if (session.user) {
         session.user.role = token.role;
         session.user.id = token.id;

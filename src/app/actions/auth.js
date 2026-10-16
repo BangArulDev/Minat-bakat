@@ -62,30 +62,49 @@ export async function registerSiswa(data) {
       return { error: "Kode Kelas tidak ditemukan! (Gunakan contoh: X-IPA-1 atau X-IPS-1)" };
     }
 
+    const teacherProfile = await prisma.teacherProfile.findUnique({
+      where: { id: classroom.teacherId },
+      select: { quota: true }
+    });
+    if (!teacherProfile || teacherProfile.quota <= 0) {
+      return { error: "Kuota kelas ini habis. Hubungi guru Anda untuk menambah kuota." };
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    await prisma.user.create({
-      data: {
-        username: data.username,
-        email: `${data.username}@siswa.local`, // Email placeholder untuk siswa
-        password: hashedPassword,
-        role: "SISWA",
-        studentProfile: {
-          create: {
-            fullName: data.namaLengkap,
-            nis: data.nis || null,
-            gender: data.jenisKelamin || null,
-            birthPlace: data.kotaLahir || null,
-            birthDate: data.tanggalLahir ? new Date(data.tanggalLahir) : null,
-            classroomId: classroom.id,
+    await prisma.$transaction(async (tx) => {
+      const dec = await tx.teacherProfile.updateMany({
+        where: { id: classroom.teacherId, quota: { gt: 0 } },
+        data: { quota: { decrement: 1 } }
+      });
+      if (dec.count === 0) throw new Error("KUOTA_HABIS");
+
+      await tx.user.create({
+        data: {
+          username: data.username,
+          email: `${data.username}@siswa.local`, // Email placeholder untuk siswa
+          password: hashedPassword,
+          role: "SISWA",
+          studentProfile: {
+            create: {
+              fullName: data.namaLengkap,
+              nis: data.nis || null,
+              gender: data.jenisKelamin || null,
+              birthPlace: data.kotaLahir || null,
+              birthDate: data.tanggalLahir ? new Date(data.tanggalLahir) : null,
+              classroomId: classroom.id,
+            }
           }
         }
-      }
+      });
     });
 
     return { success: true };
   } catch (error) {
     console.error("Error registerSiswa:", error);
+    if (error.message === "KUOTA_HABIS") {
+      return { error: "Kuota kelas ini habis. Hubungi guru Anda untuk menambah kuota." };
+    }
     return { error: "Gagal mendaftar. Silakan coba lagi." };
   }
 }

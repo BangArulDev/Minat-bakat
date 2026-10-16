@@ -220,6 +220,10 @@ export async function saveStudent(data) {
       });
     } else {
       // Create new student
+      if (teacherProfile.quota <= 0) {
+        return { error: "Kuota habis. Silakan beli kuota terlebih dahulu untuk menambah siswa." };
+      }
+
       const existingUser = await prisma.user.findUnique({
         where: { username: data.nis }
       });
@@ -227,23 +231,38 @@ export async function saveStudent(data) {
       
       const hashedPassword = await bcrypt.hash(data.nis, 10);
       
-      await prisma.user.create({
-        data: {
-          username: data.nis,
-          email: `${data.nis}@siswa.local`,
-          password: hashedPassword,
-          role: "SISWA",
-          studentProfile: {
-            create: {
-              fullName: data.name,
-              nis: data.nis,
-              gender: data.gender,
-              birthPlace: data.pob,
-              birthDate: parsedDob,
-              classroomId: classroom.id
+      await prisma.$transaction(async (tx) => {
+        const fresh = await tx.teacherProfile.findUnique({
+          where: { id: teacherProfile.id },
+          select: { quota: true }
+        });
+        if (!fresh || fresh.quota <= 0) {
+          throw new Error("Kuota habis. Silakan beli kuota terlebih dahulu untuk menambah siswa.");
+        }
+
+        await tx.user.create({
+          data: {
+            username: data.nis,
+            email: `${data.nis}@siswa.local`,
+            password: hashedPassword,
+            role: "SISWA",
+            studentProfile: {
+              create: {
+                fullName: data.name,
+                nis: data.nis,
+                gender: data.gender,
+                birthPlace: data.pob,
+                birthDate: parsedDob,
+                classroomId: classroom.id
+              }
             }
           }
-        }
+        });
+
+        await tx.teacherProfile.update({
+          where: { id: teacherProfile.id },
+          data: { quota: { decrement: 1 } }
+        });
       });
     }
     

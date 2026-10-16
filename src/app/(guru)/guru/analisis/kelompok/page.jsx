@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, 
@@ -10,81 +10,89 @@ import {
   PieChart,
   Target
 } from "lucide-react";
-
-// --- MOCK DATA ---
-const classesList = ["X MIPA 1", "X MIPA 2", "XI IPS 1", "XII BAHASA"];
-
-// Data Dummy: Distribusi Minat per Kelas
-const mockClassData = {
-  "X MIPA 1": {
-    totalStudents: 32,
-    dominantType: "Investigative",
-    description: "Kelas ini didominasi oleh siswa dengan tipe pemikir dan analitis. Cocok dengan metode pembelajaran berbasis riset atau problem solving.",
-    distribution: [
-      { 
-        type: "Realistic", 
-        count: 4, 
-        percentage: 12.5, 
-        color: "bg-red-500", 
-        textColor: "text-red-600",
-        bgLight: "bg-red-50",
-        students: ["Budi Santoso", "Rahmat Hidayat", "Doni Kurniawan", "Eko Prasetyo"]
-      },
-      { 
-        type: "Investigative", 
-        count: 12, 
-        percentage: 37.5, 
-        color: "bg-blue-500", 
-        textColor: "text-blue-600",
-        bgLight: "bg-blue-50",
-        students: ["Siti Aminah", "Dewi Sartika", "Ahmad Rizki", "Fajar Nugraha", "Gilang Ramadhan", "Hana Pertiwi", "Indra Lesmana", "Joko Susilo", "Kiki Amalia", "Lina Marlina", "Miko Wijaya", "Nina Zatulini"]
-      },
-      { 
-        type: "Artistic", 
-        count: 8, 
-        percentage: 25, 
-        color: "bg-orange-500", 
-        textColor: "text-orange-600",
-        bgLight: "bg-orange-50",
-        students: ["Bunga Citra", "Cantika", "Diana Pungky", "Elsa Syarief", "Farah Quinn", "Gita Gutawa", "Hesti Purwadinata", "Isyana Sarasvati"]
-      },
-      { 
-        type: "Social", 
-        count: 5, 
-        percentage: 15.6, 
-        color: "bg-pink-500", 
-        textColor: "text-pink-600",
-        bgLight: "bg-pink-50",
-        students: ["Rina Nose", "Sule", "Andre Taulany", "Wendy Cagur", "Denny Cagur"]
-      },
-      { 
-        type: "Enterprising", 
-        count: 2, 
-        percentage: 6.2, 
-        color: "bg-purple-500", 
-        textColor: "text-purple-600",
-        bgLight: "bg-purple-50",
-        students: ["Raffi Ahmad", "Ruben Onsu"]
-      },
-      { 
-        type: "Conventional", 
-        count: 1, 
-        percentage: 3.2, 
-        color: "bg-green-500", 
-        textColor: "text-green-600",
-        bgLight: "bg-green-50",
-        students: ["Sri Mulyani"]
-      },
-    ]
-  }
-};
+import { getDetailedResults } from "@/app/actions/guru";
+import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
 
 export default function AnalisisKelompokPage() {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState("");
   const [activeCategory, setActiveCategory] = useState(null); // Kategori yang sedang diklik
 
-  // Ambil data berdasarkan kelas yang dipilih
-  const currentData = mockClassData[selectedClass];
+  useEffect(() => {
+    async function load() {
+      const res = await getDetailedResults();
+      if (res?.success) {
+        setData(res.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, []);
+
+  // Process data to group by classroom
+  const { classesList, classData } = useMemo(() => {
+    const list = new Set();
+    const map = {};
+
+    data.forEach(student => {
+      const cls = student.className;
+      list.add(cls);
+      if (!map[cls]) {
+        map[cls] = {
+          totalStudents: 0,
+          dominantType: "",
+          description: "",
+          typeCounts: { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 },
+          studentsByType: { R: [], I: [], A: [], S: [], E: [], C: [] }
+        };
+      }
+      
+      map[cls].totalStudents += 1;
+      const dominant = student.dominantCode[0] || "R";
+      if (map[cls].typeCounts[dominant] !== undefined) {
+         map[cls].typeCounts[dominant] += 1;
+         map[cls].studentsByType[dominant].push(student.name);
+      }
+    });
+
+    // Finalize data for each class
+    Object.keys(map).forEach(cls => {
+      const c = map[cls];
+      
+      // Find the most dominant type for the whole class
+      let maxCount = 0;
+      let dominantKey = "R";
+      RIASEC_ORDER.forEach(key => {
+        if (c.typeCounts[key] > maxCount) {
+          maxCount = c.typeCounts[key];
+          dominantKey = key;
+        }
+      });
+      
+      c.dominantType = riasecDescriptions[dominantKey].name;
+      c.description = `Kelas ini didominasi oleh siswa dengan tipe ${riasecDescriptions[dominantKey].name}. ${riasecDescriptions[dominantKey].shortDesc}.`;
+
+      // Build distribution array
+      c.distribution = RIASEC_ORDER.map(key => {
+        const count = c.typeCounts[key];
+        const percentage = c.totalStudents > 0 ? ((count / c.totalStudents) * 100).toFixed(1) : 0;
+        return {
+          type: riasecDescriptions[key].name,
+          count,
+          percentage: parseFloat(percentage),
+          color: riasecDescriptions[key].color, // Use hex color directly
+          textColor: "text-gray-800", // Tailwind can't do arbitrary text-colors easily dynamically without inline style
+          bgLight: "bg-gray-100",
+          students: c.studentsByType[key]
+        };
+      }).sort((a, b) => b.count - a.count);
+    });
+
+    return { classesList: Array.from(list).sort(), classData: map };
+  }, [data]);
+
+  const currentData = classData[selectedClass];
 
   const handleSelectClass = (e) => {
     setSelectedClass(e.target.value);
@@ -112,7 +120,7 @@ export default function AnalisisKelompokPage() {
               onChange={handleSelectClass}
               className="pl-10 pr-8 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium cursor-pointer shadow-sm appearance-none min-w-[180px]"
             >
-              <option value="" disabled>Pilih Kelas...</option>
+              <option value="" disabled>{isLoading ? "Memuat..." : "Pilih Kelas..."}</option>
               {classesList.map(cls => (
                 <option key={cls} value={cls}>{cls}</option>
               ))}
@@ -198,7 +206,7 @@ export default function AnalisisKelompokPage() {
                       >
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
-                            <span className={`w-3 h-3 rounded-full ${item.color}`} />
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                             <span className={`font-bold ${isActive ? "text-gray-900" : "text-gray-600"}`}>
                               {item.type}
                             </span>
@@ -217,7 +225,8 @@ export default function AnalisisKelompokPage() {
                             initial={{ width: 0 }}
                             animate={{ width: `${item.percentage}%` }}
                             transition={{ duration: 1, ease: "easeOut" }}
-                            className={`h-full rounded-full ${item.color} relative`}
+                            className="h-full rounded-full relative"
+                            style={{ backgroundColor: item.color }}
                           >
                              {/* Glossy effect top */}
                              <div className="absolute top-0 left-0 right-0 h-1/2 bg-white opacity-20" />
@@ -237,8 +246,11 @@ export default function AnalisisKelompokPage() {
                     animate={{ opacity: 1, x: 0 }}
                     key={activeCategory.type}
                   >
-                    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4 ${activeCategory.bgLight} ${activeCategory.textColor}`}>
-                       <span className={`w-2 h-2 rounded-full ${activeCategory.color}`} />
+                    <div 
+                       className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-4"
+                       style={{ backgroundColor: `${activeCategory.color}20`, color: activeCategory.color }}
+                    >
+                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: activeCategory.color }} />
                        {activeCategory.type}
                     </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-2">
@@ -254,12 +266,18 @@ export default function AnalisisKelompokPage() {
                           key={idx} 
                           className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
                         >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${activeCategory.bgLight} ${activeCategory.textColor}`}>
+                          <div 
+                             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                             style={{ backgroundColor: `${activeCategory.color}20`, color: activeCategory.color }}
+                          >
                             {student.charAt(0)}
                           </div>
                           <span className="text-gray-700 font-medium text-sm">{student}</span>
                         </div>
                       ))}
+                      {activeCategory.students.length === 0 && (
+                        <p className="text-sm text-gray-400">Belum ada siswa di kategori ini.</p>
+                      )}
                     </div>
                   </motion.div>
                 ) : (

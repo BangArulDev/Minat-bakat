@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 import { getResults } from "@/app/actions/guru";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DataHasilPilihanPage() {
+  const router = useRouter();
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -114,7 +116,11 @@ export default function DataHasilPilihanPage() {
 
             <tbody className="divide-y divide-gray-100">
               <AnimatePresence>
-                {filteredData.length > 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="7" className="py-12 text-center text-gray-500">Memuat data...</td>
+                  </tr>
+                ) : filteredData.length > 0 ? (
                   filteredData.map((item, index) => (
                     <motion.tr 
                       key={item.id}
@@ -162,7 +168,7 @@ export default function DataHasilPilihanPage() {
                         <button 
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors group relative"
                           title="Lihat Detail Analisis"
-                          onClick={() => alert(`Membuka detail hasil tes ${item.name}`)}
+                          onClick={() => router.push(`/guru/analisis/individu?nis=${item.nis}`)}
                         >
                           <Eye size={20} />
                         </button>

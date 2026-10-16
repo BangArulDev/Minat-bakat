@@ -347,34 +347,82 @@ export async function createTransaction(amount, items, method) {
   }
 }
 
-// === HASIL TES (Legacy) ===
+// === HASIL TES ===
 export async function getResults() {
   try {
-    const { db, user } = await requireGuruMock();
-    const classroomIds = db.classrooms.filter(c => c.teacherId === user.id).map(c => c.id);
-    const students = db.users.filter(u => u.role === "SISWA" && classroomIds.includes(u.profile?.classroomId));
-    const studentIds = students.map(s => s.id);
-    const results = (db.results || []).filter(r => studentIds.includes(r.studentId));
-    
-    const enriched = results.map(r => {
-      const student = students.find(s => s.id === r.studentId);
-      const cls = db.classrooms.find(c => c.id === student?.profile?.classroomId);
-      return {
-        id: r.id,
-        nis: student?.profile?.nis,
-        name: student?.profile?.fullName,
-        className: cls?.name,
-        testType: r.testType || "RIASEC",
-        date: r.date || new Date().toLocaleDateString("id-ID"),
-        result: r.result || "-",
-        score: r.score || "-",
-        status: r.status || "Selesai",
-        color: r.color || "bg-blue-100 text-blue-700 border-blue-200"
-      };
+    const { teacherProfile } = await requireGuru();
+
+    const results = await prisma.riasecResult.findMany({
+      where: {
+        student: {
+          classroom: { teacherId: teacherProfile.id }
+        }
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            classroom: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
     });
-    
-    return { success: true, data: enriched.reverse() };
+
+    const enriched = results.map(r => ({
+      id: r.id,
+      nis: r.student.nis || r.student.user.username,
+      name: r.student.fullName,
+      className: r.student.classroom.name,
+      testType: "RIASEC",
+      date: r.createdAt.toLocaleDateString("id-ID"),
+      result: r.dominantCode || "-",
+      score: r.consistency || "-",
+      status: "Selesai",
+      color: "bg-blue-100 text-blue-700 border-blue-200"
+    }));
+
+    return { success: true, data: enriched };
   } catch(error) {
+    console.error("Error getResults:", error);
+    return { error: error.message };
+  }
+}
+
+export async function getDetailedResults() {
+  try {
+    const { teacherProfile } = await requireGuru();
+
+    const results = await prisma.riasecResult.findMany({
+      where: {
+        student: {
+          classroom: { teacherId: teacherProfile.id }
+        }
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+            classroom: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const detailed = results.map(r => ({
+      id: r.id,
+      nis: r.student.nis || r.student.user.username,
+      name: r.student.fullName,
+      className: r.student.classroom.name,
+      dominantCode: r.dominantCode || "-",
+      rawScores: JSON.parse(r.rawScores || "{}"),
+      date: r.createdAt.toISOString()
+    }));
+
+    return { success: true, data: detailed };
+  } catch(error) {
+    console.error("Error getDetailedResults:", error);
     return { error: error.message };
   }
 }

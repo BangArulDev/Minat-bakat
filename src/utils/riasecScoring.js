@@ -1,6 +1,4 @@
 // Utilitas perhitungan skor Holland RIASEC
-import { riasecQuestions } from "@/data/riasecQuestions";
-import { riasecSelfEstimate } from "@/data/riasecSelfEstimate";
 import { riasecCareers } from "@/data/riasecCareers";
 import { consistencyMatrix, RIASEC_ORDER } from "@/data/riasecDescriptions";
 
@@ -8,13 +6,15 @@ import { consistencyMatrix, RIASEC_ORDER } from "@/data/riasecDescriptions";
  * Menghitung skor per tipe RIASEC
  * @param {Object} answers - Object { itemId: 0|1 } untuk 216 soal
  * @param {Object} selfEstimates - Object { itemId: 1-7 } untuk 12 self-estimate
+ * @param {Array} questions - Array of questions from DB
+ * @param {Array} estimatesData - Array of self estimates from DB
  * @returns {Object} { R: number, I: number, A: number, S: number, E: number, C: number }
  */
-export function calculateScores(answers, selfEstimates) {
+export function calculateScores(answers, selfEstimates, questions, estimatesData) {
   const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
 
-  // 1. Hitung dari 216 soal utama (0 atau 1)
-  riasecQuestions.forEach((q) => {
+  // 1. Hitung dari soal utama (0 atau 1)
+  questions.forEach((q) => {
     const answer = answers[q.id];
     if (answer === 1) {
       scores[q.type] += 1;
@@ -22,10 +22,8 @@ export function calculateScores(answers, selfEstimates) {
   });
 
   // 2. Tambahkan Self-Estimate (nilai 1-7)
-  // Menggunakan data dari riasecSelfEstimate yang ID-nya 217-228
-  
   Object.entries(selfEstimates).forEach(([id, value]) => {
-    const seItem = riasecSelfEstimate.find((se) => se.id === parseInt(id));
+    const seItem = estimatesData.find((se) => se.id === parseInt(id));
     if (seItem && value) {
       scores[seItem.type] += parseInt(value);
     }

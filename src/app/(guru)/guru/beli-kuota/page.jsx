@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Check, 
@@ -54,9 +55,48 @@ const paymentMethods = [
 ];
 
 export default function BeliKuotaPage() {
+  const { data: session } = useSession();
   const [step, setStep] = useState(1); // 1: Pilih, 2: Konfirmasi, 3: Bayar
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handlePay = async () => {
+    setLoading(true);
+    try {
+      // Ambil userId dari session next-auth (User.id, bukan TeacherProfile.id)
+      const userId = session?.user?.id;
+      if (!userId) {
+        alert("Sesi login tidak ditemukan. Silakan login ulang.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId, // User.id dari session
+          amount: Math.round(selectedPackage.price * 1.11), // Harga + PPN 11%
+          quotaAdded: selectedPackage.quota,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.redirect_url) {
+        // Flip menggunakan redirect — buka halaman pembayaran Flip
+        window.location.href = data.redirect_url;
+      } else {
+        alert("Gagal membuat tagihan: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan saat membuat tagihan. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Format Rupiah
   const formatRupiah = (number) => {
@@ -280,13 +320,13 @@ export default function BeliKuotaPage() {
         )}
 
         <button 
-          onClick={step === 3 ? () => alert("Mengarahkan ke Payment Gateway...") : nextStep}
+          onClick={step === 3 ? handlePay : nextStep}
           className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition-all shadow-lg shadow-blue-200
-            ${!selectedPackage && step === 1 ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-blue-600 hover:bg-blue-700 hover:scale-105"}
+            ${(!selectedPackage && step === 1) || loading ? "bg-gray-300 cursor-not-allowed shadow-none" : "bg-blue-600 hover:bg-blue-700 hover:scale-105"}
           `}
-          disabled={!selectedPackage && step === 1}
+          disabled={(!selectedPackage && step === 1) || loading}
         >
-          {step === 3 ? "Bayar Sekarang" : "Lanjut"} 
+          {step === 3 ? (loading ? "Memproses..." : "Bayar Sekarang") : "Lanjut"} 
           {step !== 3 && <ChevronRight size={20} />}
         </button>
       </div>

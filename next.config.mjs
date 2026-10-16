@@ -2,6 +2,7 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
+  allowedDevOrigins: ['*.loca.lt', '*.trycloudflare.com'],
 };
 
 export default nextConfig;

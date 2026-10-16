@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
 import {
-  calculateScores,
   getTopThreeCode,
   getRankedScores,
   getConsistencyLevel,
@@ -39,8 +38,11 @@ export default function HasilRiasecPage() {
         return;
       }
 
-      const { answers, selfEstimates } = JSON.parse(stored);
-      const scores = calculateScores(answers, selfEstimates);
+      const { answers, selfEstimates, scores } = JSON.parse(stored);
+      if (!scores) {
+        // Fallback for older sessions without scores (just redirect back to test)
+        throw new Error("Skor tidak ditemukan di session, harap ulang tes.");
+      }
       const code = getTopThreeCode(scores);
       const ranked = getRankedScores(scores);
       const consistency = getConsistencyLevel(code);

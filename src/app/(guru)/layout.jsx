@@ -49,7 +49,6 @@ export default function GuruLayout({ children }) {
     {
       groupLabel: "Data Master",
       items: [
-        { name: "Instrumen", href: "/guru/instrumen", icon: ClipboardList },
         { name: "Kelas", href: "/guru/kelas", icon: School },
         { name: "Siswa", href: "/guru/siswa", icon: Users },
       ],

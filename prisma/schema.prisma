@@ -36,6 +36,7 @@ model TeacherProfile {
   quota       Int      @default(0)
 
   classrooms  Classroom[]
+  transactions Transaction[]
 }
 
 model Classroom {
@@ -72,4 +73,32 @@ model RiasecResult {
   dominantCode  String
   consistency   String?
   createdAt     DateTime @default(now())
+}
+
+model RiasecQuestion {
+  id        Int      @id
+  group     String
+  type      String
+  statement String
+}
+
+model RiasecSelfEstimate {
+  id        Int      @id
+  aspect    String
+  type      String
+  field     String
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  teacherId     String
+  teacher       TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  amount        Int
+  status        String   @default("PENDING") // PENDING, SUCCESS, FAILED, CANCEL, EXPIRED
+  quotaAdded    Int      @default(0) // Berapa kuota yang dibeli
+  snapToken     String?
+  paymentType   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

@@ -17,8 +17,7 @@ import {
   Info,
   Zap,
 } from "lucide-react";
-import { riasecQuestions } from "@/data/riasecQuestions";
-import { riasecSelfEstimate } from "@/data/riasecSelfEstimate";
+import { getRiasecQuestions, saveRiasecResult } from "@/app/actions/riasec";
 import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
 
 const ITEMS_PER_PAGE = 10;
@@ -40,7 +39,22 @@ export default function TesRiasecPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selfEstimates, setSelfEstimates] = useState({});
+  const [dbQuestions, setDbQuestions] = useState([]);
+  const [dbEstimates, setDbEstimates] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showValidation, setShowValidation] = useState(false);
+
+  useEffect(() => {
+    async function loadQuestions() {
+      const res = await getRiasecQuestions();
+      if (res?.success) {
+        setDbQuestions(res.data.questions);
+        setDbEstimates(res.data.selfEstimates);
+      }
+      setLoading(false);
+    }
+    loadQuestions();
+  }, []);
 
   // ============================================================
   //  DERIVED DATA
@@ -50,8 +64,8 @@ export default function TesRiasecPage() {
   // Questions for the current group step
   const currentQuestions = useMemo(() => {
     if (!step.group) return [];
-    return riasecQuestions.filter((q) => q.group === step.group);
-  }, [step.group]);
+    return dbQuestions.filter((q) => q.group === step.group);
+  }, [step.group, dbQuestions]);
 
   // Paginated questions
   const totalPages = Math.ceil(currentQuestions.length / ITEMS_PER_PAGE);
@@ -69,10 +83,10 @@ export default function TesRiasecPage() {
   const isCurrentPageComplete = useMemo(() => {
     if (step.id === "intro") return true;
     if (step.id === "self-estimate") {
-      return riasecSelfEstimate.every((se) => selfEstimates[se.id] !== undefined && selfEstimates[se.id] !== "");
+      return dbEstimates.every((se) => selfEstimates[se.id] !== undefined && selfEstimates[se.id] !== "");
     }
     return pageQuestions.every((q) => answers[q.id] !== undefined);
-  }, [step.id, pageQuestions, answers, selfEstimates]);
+  }, [step.id, pageQuestions, answers, selfEstimates, dbEstimates]);
 
   // Check if entire step is complete
   const isStepComplete = useCallback(
@@ -80,12 +94,12 @@ export default function TesRiasecPage() {
       const s = STEPS[stepIndex];
       if (s.id === "intro") return true;
       if (s.id === "self-estimate") {
-        return riasecSelfEstimate.every((se) => selfEstimates[se.id] !== undefined && selfEstimates[se.id] !== "");
+        return dbEstimates.every((se) => selfEstimates[se.id] !== undefined && selfEstimates[se.id] !== "");
       }
-      const qs = riasecQuestions.filter((q) => q.group === s.group);
+      const qs = dbQuestions.filter((q) => q.group === s.group);
       return qs.every((q) => answers[q.id] !== undefined);
     },
-    [answers, selfEstimates]
+    [answers, selfEstimates, dbQuestions, dbEstimates]
   );
 
   // ============================================================
@@ -125,13 +139,23 @@ export default function TesRiasecPage() {
       setCurrentPage(0);
       setShowValidation(false);
     } else {
-      // All steps done — navigate to results
-      // Store answers in sessionStorage
-      sessionStorage.setItem(
-        "riasec_answers",
-        JSON.stringify({ answers, selfEstimates })
-      );
-      router.push("/siswa/hasil-riasec");
+      // All steps done — save to DB and navigate to results
+      import("@/utils/riasecScoring").then(async ({ calculateScores, getTopThreeCode, getConsistencyLevel }) => {
+        const scores = calculateScores(answers, selfEstimates, dbQuestions, dbEstimates);
+        const code = getTopThreeCode(scores);
+        const consistency = getConsistencyLevel(code).level;
+        
+        const res = await saveRiasecResult(scores, code, consistency);
+        if (res?.error) {
+          alert("Perhatian: " + res.error + ". (Hasil Anda hanya akan tampil di perangkat ini dan tidak tersimpan di database).");
+        }
+        
+        sessionStorage.setItem(
+          "riasec_answers",
+          JSON.stringify({ answers, selfEstimates, scores })
+        );
+        router.push("/siswa/hasil-riasec");
+      });
     }
   };
 
@@ -145,7 +169,7 @@ export default function TesRiasecPage() {
       const prevStep = STEPS[currentStep - 1];
       setCurrentStep((s) => s - 1);
       if (prevStep.group) {
-        const prevQuestions = riasecQuestions.filter((q) => q.group === prevStep.group);
+        const prevQuestions = dbQuestions.filter((q) => q.group === prevStep.group);
         setCurrentPage(Math.ceil(prevQuestions.length / ITEMS_PER_PAGE) - 1);
       } else {
         setCurrentPage(0);
@@ -161,6 +185,10 @@ export default function TesRiasecPage() {
   // ============================================================
   //  RENDER
   // ============================================================
+  if (loading) {
+    return <div className="flex justify-center items-center h-64"><p className="text-gray-500 animate-pulse">Memuat pertanyaan...</p></div>;
+  }
+
   return (
     <div className="max-w-4xl mx-auto pb-12 space-y-6">
       {/* PROGRESS HEADER */}
@@ -243,6 +271,7 @@ export default function TesRiasecPage() {
           {step.id === "self-estimate" && (
             <SelfEstimateStep
               selfEstimates={selfEstimates}
+              dbEstimates={dbEstimates}
               onEstimate={handleSelfEstimate}
               showValidation={showValidation}
             />
@@ -511,10 +540,10 @@ function QuestionStep({
 // ============================================================
 //  SELF-ESTIMATE STEP
 // ============================================================
-function SelfEstimateStep({ selfEstimates, onEstimate, showValidation }) {
+function SelfEstimateStep({ selfEstimates, dbEstimates, onEstimate, showValidation }) {
   // Group by aspect: Pengetahuan and Keterampilan
-  const pengetahuan = riasecSelfEstimate.filter((se) => se.aspect === "Pengetahuan");
-  const keterampilan = riasecSelfEstimate.filter((se) => se.aspect === "Keterampilan");
+  const pengetahuan = dbEstimates.filter((se) => se.aspect === "Pengetahuan");
+  const keterampilan = dbEstimates.filter((se) => se.aspect === "Keterampilan");
 
   return (
     <div className="space-y-6">

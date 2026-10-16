@@ -4,15 +4,35 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Metode pembayaran yang tersedia di Flip (step 3 memakai sender_bank + sender_bank_type)
+const FLIP_PAYMENT_METHODS: Record<string, { senderBank: string; senderBankType: string }> = {
+  qris: { senderBank: "qris", senderBankType: "wallet_account" },
+  bca: { senderBank: "bca", senderBankType: "virtual_account" },
+  bri: { senderBank: "bri", senderBankType: "virtual_account" },
+  bni: { senderBank: "bni", senderBankType: "virtual_account" },
+  mandiri: { senderBank: "mandiri", senderBankType: "virtual_account" },
+  ovo: { senderBank: "ovo", senderBankType: "wallet_account" },
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     // userId = User.id dari session next-auth (bukan TeacherProfile.id)
-    let { userId, amount, quotaAdded } = body;
+    let { userId, amount, quotaAdded, method } = body;
 
     if (!userId || !amount || !quotaAdded) {
       return NextResponse.json(
         { error: "Missing required fields (userId, amount, quotaAdded)" },
+        { status: 400 }
+      );
+    }
+
+    // Metode pembayaran yang dipilih pembeli (default ke BCA VA)
+    const selectedMethod = FLIP_PAYMENT_METHODS[method] || FLIP_PAYMENT_METHODS.bca;
+
+    if (method && !FLIP_PAYMENT_METHODS[method]) {
+      return NextResponse.json(
+        { error: `Metode pembayaran tidak dikenal: ${method}` },
         { status: 400 }
       );
     }
@@ -58,7 +78,7 @@ export async function POST(req: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const redirectUrl = `${appUrl}/guru/payment/status?order_id=${orderId}`;
 
-    // 3. Buat Bill di Flip
+    // 3. Buat Bill di Flip dengan metode pembayaran pilihan pembeli
     const flipBill = await createFlipBill({
       title: `Pembelian Kuota ${quotaAdded} Siswa - ${teacher.fullName}`,
       type: "SINGLE",
@@ -66,6 +86,8 @@ export async function POST(req: Request) {
       redirectUrl: redirectUrl,
       senderName: teacher.fullName,
       senderEmail: teacher.whatsapp ? `wa${teacher.whatsapp}@flip.id` : "guru@sekolah.id",
+      senderBank: selectedMethod.senderBank,
+      senderBankType: selectedMethod.senderBankType,
     });
 
     // 4. Simpan transaksi ke database
@@ -81,10 +103,13 @@ export async function POST(req: Request) {
       },
     });
 
+    // payment_url tersedia di step 3; link_url (step 1/2) tidak berisi skema,
+    // jadi pastikan URL Flip selalu absolut sebelum dikirim ke klien.
+    const flipUrl = flipBill.payment_url || flipBill.link_url || "";
+    const paymentRedirectUrl = flipUrl.startsWith("http") ? flipUrl : `https://${flipUrl}`;
+
     return NextResponse.json({
-      // payment_url = URL langsung ke halaman bayar Flip
-      // link_url = halaman info tagihan Flip (fallback jika payment_url tidak ada)
-      redirect_url: flipBill.payment_url || flipBill.link_url,
+      redirect_url: paymentRedirectUrl,
       link_id: flipBill.link_id,
       order_id: orderId,
     });

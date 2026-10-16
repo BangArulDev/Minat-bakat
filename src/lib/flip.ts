@@ -98,13 +98,14 @@ export async function createFlipBill(params: CreateBillParams): Promise<FlipBill
     expired_date: expiredDate,
     is_address_required: '0',
     is_phone_number_required: '0',
-    step: '3', // Step 3 = direct checkout page Flip
-    // Field wajib di Flip Sandbox (opsional di Production)
+    step: '3', // Step 3 = langsung ke halaman bayar Flip dengan metode yang dipilih
     sender_name: params.senderName || 'Pengguna',
     sender_email: params.senderEmail || 'user@example.com',
-    sender_bank: params.senderBank || 'bca',
-    sender_bank_type: params.senderBankType || 'virtual_account',
   });
+
+  // sender_bank/sender_bank_type wajib di step 3 (menentukan metode pembayaran)
+  if (params.senderBank) formBody.set('sender_bank', params.senderBank);
+  if (params.senderBankType) formBody.set('sender_bank_type', params.senderBankType);
 
   const response = await fetch(`${FLIP_BASE_URL}/v2/pwf/bill`, {
     method: 'POST',

@@ -1,34 +1,83 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Instagram, Facebook, Youtube, Mail } from "lucide-react";
+
+const nav = [
+  { label: "Beranda", href: "/" },
+  { label: "Tentang RIASEC", href: "#tentang-riasec" },
+  { label: "Konsistensi Holland Code", href: "#konsistensi-holland" },
+  { label: "Lebih dari Sekadar Tes", href: "#mengapa-talenta" },
+];
+
+const social = [
+  { icon: Instagram, label: "Instagram" },
+  { icon: Facebook, label: "Facebook" },
+  { icon: Youtube, label: "YouTube" },
+];
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-100 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-center text-center">
-        
-        {/* --- LOGO & BRAND --- */}
-        <Link href="/" className="flex items-center gap-2 group mb-6">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-blue-200 shadow-lg group-hover:rotate-12 transition-transform duration-300">
-            <Sparkles size={20} />
+    <footer className="bg-[#141b3d] text-slate-300">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+          <div>
+            <Link href="/" className="flex items-center gap-2">
+              <Image src="/logo.svg" alt="" width={28} height={28} />
+              <span className="text-xl font-extrabold tracking-tight text-white">
+                Care Minat Bakat
+              </span>
+            </Link>
+            <p className="mt-3 max-w-sm text-sm leading-relaxed">
+              Tes RIASEC untuk membantu siswa memahami minat, bakat, kecocokan jurusan, dan arah
+              karier.
+            </p>
+            <ul className="mt-4 flex gap-2">
+              {social.map((s) => (
+                <li key={s.label}>
+                  <a
+                    href="#"
+                    aria-label={s.label}
+                    className="inline-block rounded-lg bg-white/10 p-2 transition-colors hover:bg-white/20 hover:text-white"
+                  >
+                    <s.icon size={18} />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
-          <span className="font-bold text-xl tracking-tight text-gray-900">
-            Talenta<span className="text-blue-600">Ku</span>
-          </span>
-        </Link>
 
-        {/* --- KETERANGAN WEBSITE --- */}
-        <p className="text-gray-500 text-sm leading-relaxed max-w-md mb-10">
-          Platform tes minat bakat modern yang dirancang untuk membantumu mengenali potensi diri, 
-          memilih jurusan yang tepat, dan merancang karier masa depan dengan percaya diri.
-        </p>
+          <nav aria-label="Halaman">
+            <h3 className="text-sm font-bold text-white">Halaman</h3>
+            <ul className="mt-3 space-y-2 text-sm">
+              {nav.map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href} className="transition-colors hover:text-white">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* --- COPYRIGHT --- */}
-        <div className="w-full border-t border-gray-100 pt-8">
-          <p className="text-gray-400 text-xs">
-            &copy; {new Date().getFullYear()} TalentaKu Indonesia. All rights reserved.
-          </p>
+          <div>
+            <h3 className="text-sm font-bold text-white">Kontak</h3>
+            <ul className="mt-3 space-y-3 text-sm">
+              <li className="flex items-start gap-2">
+                <span className="mt-0.5 shrink-0 text-[#6d5cff]">
+                  <Mail size={18} />
+                </span>
+                <a href="mailto:halo@caminatbakat.id" className="transition-colors hover:text-white">
+                  halo@caminatbakat.id
+                </a>
+              </li>
+              <li>Jakarta, Indonesia</li>
+            </ul>
+          </div>
         </div>
 
+        <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-400">
+          © 2026 Care Minat Bakat. Seluruh hak cipta dilindungi.
+        </div>
       </div>
     </footer>
   );

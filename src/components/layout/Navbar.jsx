@@ -1,128 +1,99 @@
 "use client";
-import { useState } from "react";
-import Link from "next/link";
-import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useMotionValueEvent,
-} from "framer-motion";
-import { Menu, X, Sparkles, ChevronDown } from "lucide-react";
-import { ButtonLink } from "..";
 
-const NAV_LINKS = [
-  { name: "Home", href: "/" },
-  { name: "About", href: "/#about" },
-  { name: "Fitur", href: "/#fitur" },
-  { name: "Harga", href: "/#harga" },
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Menu, X, Search } from "lucide-react";
+
+const links = [
+  { label: "Beranda", href: "/", active: true },
+  { label: "Tentang RIASEC", href: "#tentang-riasec" },
+  { label: "Konsistensi", href: "#konsistensi-holland" },
+  { label: "Mengapa Care Minat Bakat", href: "#mengapa-talenta" },
 ];
 
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
-
-  // Logika Scroll (Navbar hilang saat scroll ke bawah)
-  const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = scrollY.getPrevious();
-    if (isOpen) return;
-    if (latest > previous && latest > 150) {
-      setIsVisible(false);
-    } else {
-      setIsVisible(true);
-    }
-  });
+  const [open, setOpen] = useState(false);
 
   return (
-    <motion.nav
-      variants={{
-        visible: { y: 0 },
-        hidden: { y: "-100%" },
-      }}
-      animate={isVisible ? "visible" : "hidden"}
-      transition={{ duration: 0.35, ease: "easeInOut" }}
-      className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100"
-    >
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        {/* --- BAGIAN KIRI: LOGO --- */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-blue-200 shadow-lg group-hover:rotate-12 transition-transform duration-300">
-            <Sparkles size={20} />
-          </div>
-          <span className="font-bold text-xl tracking-tight text-gray-900">
-            Talenta<span className="text-blue-600">Ku</span>
+    <header className="sticky top-0 z-50 rounded-b-3xl bg-white/95 shadow-[0_1px_24px_rgba(109,92,255,0.08)] backdrop-blur">
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Care Minat Bakat">
+          <Image src="/logo.svg" alt="Care Minat Bakat" width={28} height={28} />
+          <span className="text-xl font-extrabold tracking-tight text-[#1b2352]">
+            Care Minat Bakat
           </span>
         </Link>
 
-        {/* --- BAGIAN TENGAH: NAVIGASI DESKTOP --- */}
-        <div className="hidden lg:flex items-center gap-1">
-          {/* Link Biasa */}
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-full transition-all"
-            >
-              {link.name}
-            </Link>
+        <ul className="hidden items-center gap-7 lg:flex">
+          {links.map((l) => (
+            <li key={l.label}>
+              <Link
+                href={l.href}
+                aria-current={l.active ? "page" : undefined}
+                className={
+                  l.active
+                    ? "text-sm font-semibold text-gray-900"
+                    : "text-sm text-gray-500 transition-colors hover:text-gray-900"
+                }
+              >
+                {l.label}
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {/* --- BAGIAN KANAN: TOMBOL LOGIN --- */}
-        <div className="hidden lg:flex items-center gap-4">
-          {/* Menggunakan ButtonLink yang sudah Anda buat */}
+        <div className="flex shrink-0 items-center gap-2">
+          <button className="inline-flex items-center justify-center rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Cari">
+            <Search size={18} />
+          </button>
           <Link
             href="/login"
-            className="group px-8 py-2 rounded-full font-medium transition-all flex items-center gap-2 bg-gray-900 text-white hover:bg-gray-800"
+            className="hidden rounded-lg border border-[#6d5cff] px-4 py-2 text-sm font-medium text-[#6d5cff] transition-colors hover:bg-[#6d5cff]/5 sm:inline-flex"
+          >
+            Masuk
+          </Link>
+          <Link
+            href="/login"
+            className="hidden rounded-lg bg-[#6d5cff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#6d5cff]/80 sm:inline-flex"
           >
             Daftar
           </Link>
-        </div>
-
-        {/* --- TOMBOL HAMBURGER (MOBILE) --- */}
-        <button
-          className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* --- MENU MOBILE --- */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-white border-b border-gray-100 overflow-hidden shadow-lg"
+          <button
+            className="inline-flex items-center justify-center rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors lg:hidden"
+            aria-label={open ? "Tutup menu" : "Buka menu"}
+            onClick={() => setOpen((v) => !v)}
           >
-            <div className="flex flex-col px-6 py-6 gap-2 max-h-[80vh] overflow-y-auto">
-              {/* Mobile Links */}
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="px-4 py-3 text-gray-600 font-medium hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                >
-                  {link.name}
-                </Link>
-              ))}
-              <hr className="border-gray-100 my-4" />
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </nav>
 
-              <div className="px-4 pb-4">
+      {open && (
+        <div className="border-t border-gray-100 px-4 pt-2 pb-4 lg:hidden">
+          <ul className="flex flex-col">
+            {links.map((l) => (
+              <li key={l.label}>
                 <Link
-                  href="/login"
-                  className="group px-8 py-2 rounded-full font-medium transition-all flex items-center justify-center gap-2 bg-gray-900 text-white hover:bg-gray-800"
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className={`block rounded-lg px-2 py-2.5 text-sm ${l.active ? "font-semibold text-gray-900" : "text-gray-500"}`}
                 >
-                  Daftar
+                  {l.label}
                 </Link>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.nav>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex gap-2 sm:hidden">
+            <Link href="/login" className="flex-1 rounded-lg border border-[#6d5cff] px-4 py-2 text-center text-sm font-medium text-[#6d5cff] transition-colors hover:bg-[#6d5cff]/5">
+              Masuk
+            </Link>
+            <Link href="/login" className="flex-1 rounded-lg bg-[#6d5cff] px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#6d5cff]/80">
+              Daftar
+            </Link>
+          </div>
+        </div>
+      )}
+    </header>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,7 +10,10 @@ const links = [
   { label: "Beranda", href: "/", active: true },
   { label: "Tentang RIASEC", href: "#tentang-riasec" },
   { label: "Konsistensi", href: "#konsistensi-holland" },
-  { label: "Mengapa Care Minat Bakat", href: "#mengapa-talenta" },
+  {
+    label: "Mengapa Penelusuran Minat Karier",
+    href: "#mengapa-penelusuran-minat-karier",
+  },
 ];
 
 export default function Navbar() {
@@ -47,18 +51,21 @@ export default function Navbar() {
           <button className="inline-flex items-center justify-center rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Cari">
             <Search size={18} />
           </button>
+
           <Link
             href="/login"
             className="hidden rounded-lg border border-[#6d5cff] px-4 py-2 text-sm font-medium text-[#6d5cff] transition-colors hover:bg-[#6d5cff]/5 sm:inline-flex"
           >
             Masuk
           </Link>
+
           <Link
             href="/login"
             className="hidden rounded-lg bg-[#6d5cff] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#6d5cff]/80 sm:inline-flex"
           >
             Daftar
           </Link>
+
           <button
             className="inline-flex items-center justify-center rounded-full p-2 text-gray-500 hover:bg-gray-100 transition-colors lg:hidden"
             aria-label={open ? "Tutup menu" : "Buka menu"}
@@ -84,10 +91,12 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
+
           <div className="mt-2 flex gap-2 sm:hidden">
             <Link href="/login" className="flex-1 rounded-lg border border-[#6d5cff] px-4 py-2 text-center text-sm font-medium text-[#6d5cff] transition-colors hover:bg-[#6d5cff]/5">
               Masuk
             </Link>
+
             <Link href="/login" className="flex-1 rounded-lg bg-[#6d5cff] px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#6d5cff]/80">
               Daftar
             </Link>

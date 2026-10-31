@@ -470,3 +470,108 @@ export async function getDetailedResults() {
     return { error: error.message };
   }
 }
+
+
+ 
+// ============================================
+// TABULASI JAWABAN SISWA RIASEC
+// ============================================
+
+export async function getTabulasiAnswers() {
+  try {
+    const { teacherProfile } = await requireGuru();
+
+    const [questions, estimates, results] = await Promise.all([
+      prisma.riasecQuestion.findMany({
+        select: {
+          id: true,
+        },
+        orderBy: {
+          id: "asc",
+        },
+      }),
+
+      prisma.riasecSelfEstimate.findMany({
+        select: {
+          id: true,
+        },
+        orderBy: {
+          id: "asc",
+        },
+      }),
+
+      prisma.riasecResult.findMany({
+        where: {
+          student: {
+            classroom: {
+              teacherId: teacherProfile.id,
+            },
+          },
+        },
+
+        include: {
+          student: {
+            include: {
+              user: true,
+              classroom: true,
+            },
+          },
+        },
+
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+      }),
+    ]);
+
+    // Ambil hasil terbaru untuk setiap siswa
+    const latestResults = new Map();
+
+    for (const result of results) {
+      if (latestResults.has(result.studentId)) {
+        continue;
+      }
+
+      latestResults.set(result.studentId, {
+        id: result.id,
+        studentId: result.studentId,
+
+        nis:
+          result.student.nis ||
+          result.student.user.username ||
+          "",
+
+        name: result.student.fullName,
+
+        classId: result.student.classroomId,
+        className: result.student.classroom.name,
+
+        // Jawaban asli 216 soal
+        answers: result.answers ?? null,
+
+        // Nilai asli 12 Self-Estimate
+        selfEstimates: result.selfEstimates ?? null,
+
+        date: result.createdAt.toISOString(),
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        questionIds: questions.map((q) => q.id),
+        estimateIds: estimates.map((e) => e.id),
+        students: Array.from(latestResults.values()),
+      },
+    };
+  } catch (error) {
+    console.error("Error getTabulasiAnswers:", error);
+
+    return {
+      success: false,
+      error: "Gagal mengambil data tabulasi siswa.",
+    };
+  }
+}
+

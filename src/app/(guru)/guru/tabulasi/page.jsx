@@ -1,240 +1,763 @@
-"use client";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Table, 
-  Download, 
-  Filter, 
-  Search, 
-  FileSpreadsheet,
-  AlertCircle
-} from "lucide-react";
-import { getResults, getClassrooms } from "@/app/actions/guru";
-import { useEffect } from "react";
 
-// --- KONFIGURASI KOLOM TES ---
-const testConfigs = {
-  "RIASEC": {
-    columns: ["R", "I", "A", "S", "E", "C"], // Kode Header
-    fullNames: ["Realistic", "Investigative", "Artistic", "Social", "Enterprising", "Conventional"],
-    maxScore: 40 // Asumsi skor maksimal per kategori
-  },
-  "VAK": {
-    columns: ["V", "A", "K"],
-    fullNames: ["Visual", "Auditory", "Kinesthetic"],
-    maxScore: 100
-  }
-};
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  Download,
+  Search,
+  Filter,
+  FileSpreadsheet,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+
+import {
+  getClassrooms,
+  getTabulasiAnswers,
+} from "@/app/actions/guru";
+
+// ============================================
+// KONFIGURASI TABULASI
+// ============================================
+
+const TOTAL_QUESTIONS = 216;
+const TOTAL_ESTIMATES = 12;
 
 export default function TabulasiPage() {
-  const [data, setData] = useState([]);
-  const [classList, setClassList] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [selectedTest, setSelectedTest] = useState("RIASEC");
+
+  const [students, setStudents] = useState([]);
+  const [questionIds, setQuestionIds] = useState([]);
+  const [estimateIds, setEstimateIds] = useState([]);
+
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function load() {
-      const [resultsRes, classesRes] = await Promise.all([getResults(), getClassrooms()]);
-      if (classesRes?.success) {
-        const cls = classesRes.data.map(c => c.name);
-        setClassList(cls);
-        if (cls.length > 0) {
-          setSelectedClass(cls[0]);
-        }
+  // ============================================
+  // MENGAMBIL DATA DARI DATABASE
+  // ============================================
+
+  const loadData = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [classRes, tabRes] = await Promise.all([
+        getClassrooms(),
+        getTabulasiAnswers(),
+      ]);
+
+      if (!classRes?.success) {
+        throw new Error(
+          classRes?.error || "Gagal memuat kelas."
+        );
       }
-      if (resultsRes?.success) {
-        const formatted = resultsRes.data.map(r => {
-          let scoresObj = {};
-          try {
-            // score kini berisi rawScores sebagai JSON string dengan format {R: n, I: n, A: n, S: n, E: n, C: n}
-            if (typeof r.score === 'string' && r.score.startsWith('{')) {
-              scoresObj = JSON.parse(r.score);
-            }
-          } catch(e) {}
-          return {
-            id: r.id,
-            nis: r.nis,
-            name: r.name,
-            class: r.className,
-            testType: r.testType === "VAK (Gaya Belajar)" ? "VAK" : r.testType,
-            scores: scoresObj,
-            dominant: r.result,
-            consistency: r.consistency || "-",
-          };
-        });
-        setData(formatted);
+
+      if (!tabRes?.success) {
+        throw new Error(
+          tabRes?.error || "Gagal memuat tabulasi."
+        );
       }
+
+      const classData = classRes.data || [];
+      const tabData = tabRes.data || {};
+
+      setClasses(classData);
+      setStudents(tabData.students || []);
+
+      setQuestionIds(tabData.questionIds || []);
+      setEstimateIds(tabData.estimateIds || []);
+
+      setSelectedClass((previous) => {
+        const exists = classData.some(
+          (item) => item.id === previous
+        );
+
+        return exists
+          ? previous
+          : classData[0]?.id || "";
+      });
+    } catch (err) {
+      console.error("Error tabulasi:", err);
+      setError(err.message || "Gagal memuat data.");
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, []);
-
-  // Konfigurasi kolom berdasarkan tes yang dipilih
-  const currentConfig = testConfigs[selectedTest] || testConfigs["RIASEC"];
-
-  // Filter Data
-  const filteredData = data.filter(item => 
-    item.class === selectedClass && 
-    item.testType === selectedTest &&
-    (item.name?.toLowerCase().includes(search.toLowerCase()) || 
-    item.nis?.includes(search))
-  );
-
-  // Helper: Cek apakah ini skor tertinggi di baris tersebut
-  const isHighest = (scores, key) => {
-    const values = Object.values(scores);
-    const max = Math.max(...values);
-    return scores[key] === max;
   };
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // ============================================
+  // FILTER DATA BERDASARKAN KELAS DAN NAMA
+  // ============================================
+
+  const filteredStudents = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
+
+    return students.filter((student) => {
+      const sameClass =
+        student.classId === selectedClass;
+
+      const nameMatch = String(
+        student.name || ""
+      ).toLowerCase().includes(keyword);
+
+      const nisMatch = String(
+        student.nis || ""
+      ).toLowerCase().includes(keyword);
+
+      return sameClass && (nameMatch || nisMatch);
+    });
+  }, [students, selectedClass, search]);
+
+  const selectedClassName =
+    classes.find((item) => item.id === selectedClass)
+      ?.name || "Kelas";
+
+  // ============================================
+  // VALIDASI INSTRUMEN
+  // ============================================
+
+  const instrumentReady =
+    questionIds.length === TOTAL_QUESTIONS &&
+    estimateIds.length === TOTAL_ESTIMATES;
+
+  // ============================================
+  // CEK KETERSEDIAAN JAWABAN
+  // ============================================
+
+  const hasAnswers = (student) => {
+    return (
+      student.answers !== null &&
+      student.answers !== undefined &&
+      student.selfEstimates !== null &&
+      student.selfEstimates !== undefined
+    );
+  };
+
+  const studentsWithAnswers =
+    filteredStudents.filter(hasAnswers).length;
+
+  const studentsWithoutAnswers =
+    filteredStudents.length - studentsWithAnswers;
+
+  // ============================================
+  // FORMAT JAWABAN SOAL 1-216
+  // ============================================
+
+  const formatAnswer = (student, questionId) => {
+    if (!student.answers) {
+      return "—";
+    }
+
+    const value =
+      student.answers[String(questionId)];
+
+    // YA = 1
+    if (value === 1 || value === true) {
+      return 1;
+    }
+
+    // TIDAK = KOSONG
+    if (value === 0 || value === false) {
+      return "";
+    }
+
+    // JAWABAN TIDAK TERSEDIA
+    return "—";
+  };
+
+  // ============================================
+  // FORMAT SELF-ESTIMATE 1-12
+  // ============================================
+
+  const formatEstimate = (student, estimateId) => {
+    if (!student.selfEstimates) {
+      return "—";
+    }
+
+    const value =
+      student.selfEstimates[String(estimateId)];
+
+    if (
+      Number.isInteger(value) &&
+      value >= 1 &&
+      value <= 7
+    ) {
+      return value;
+    }
+
+    return "—";
+  };
+
+  // ============================================
+  // MEMBUAT FILE EXCEL XLSX
+  // ============================================
+
+  const downloadExcel = async () => {
+    if (
+      !instrumentReady ||
+      filteredStudents.length === 0 ||
+      downloading
+    ) {
+      return;
+    }
+
+    setDownloading(true);
+    setError("");
+
+    try {
+      const ExcelJS = (
+        await import("exceljs")
+      ).default;
+
+      const workbook = new ExcelJS.Workbook();
+
+      workbook.creator = "CARE Indonesia";
+      workbook.title = "Tabulasi Jawaban RIASEC";
+      workbook.subject = "Asesmen Minat Karier Holland";
+
+      const sheet = workbook.addWorksheet(
+        "Tabulasi Data"
+      );
+
+      // HEADER EXCEL
+      const headers = [
+        "No",
+        "NIS",
+        "Nama Siswa",
+        ...questionIds.map((_, index) => index + 1),
+        ...estimateIds.map(
+          (_, index) => `SE ${index + 1}`
+        ),
+      ];
+
+      sheet.addRow(headers);
+
+      // ISI EXCEL
+      filteredStudents.forEach((student, index) => {
+        const rowData = [
+          index + 1,
+          String(student.nis || ""),
+          student.name || "",
+
+          // Jawaban 216 soal
+          ...questionIds.map((id) =>
+            formatAnswer(student, id)
+          ),
+
+          // Nilai 12 Self-Estimate
+          ...estimateIds.map((id) =>
+            formatEstimate(student, id)
+          ),
+        ];
+
+        sheet.addRow(rowData);
+      });
+
+      // ============================================
+      // FORMAT HEADER
+      // ============================================
+
+      const headerRow = sheet.getRow(1);
+
+      headerRow.height = 30;
+
+      headerRow.font = {
+        bold: true,
+        color: {
+          argb: "FFFFFFFF",
+        },
+      };
+
+      headerRow.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF2563EB",
+        },
+      };
+
+      headerRow.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+
+      // UKURAN KOLOM
+      sheet.getColumn(1).width = 7;
+      sheet.getColumn(2).width = 21;
+      sheet.getColumn(3).width = 32;
+
+      for (
+        let col = 4;
+        col <= headers.length;
+        col++
+      ) {
+        sheet.getColumn(col).width = 9;
+      }
+
+      // NIS SEBAGAI TEKS
+      sheet.getColumn(2).numFmt = "@";
+
+      // HEADER DAN IDENTITAS TETAP TERLIHAT
+      sheet.views = [
+        {
+          state: "frozen",
+          xSplit: 3,
+          ySplit: 1,
+        },
+      ];
+
+      // FILTER EXCEL
+      sheet.autoFilter = {
+        from: {
+          row: 1,
+          column: 1,
+        },
+        to: {
+          row: 1,
+          column: headers.length,
+        },
+      };
+
+      // BORDER DAN ALIGNMENT
+      for (
+        let rowIndex = 2;
+        rowIndex <= sheet.rowCount;
+        rowIndex++
+      ) {
+        const row = sheet.getRow(rowIndex);
+
+        row.alignment = {
+          vertical: "middle",
+        };
+
+        row.getCell(2).numFmt = "@";
+
+        for (
+          let colIndex = 4;
+          colIndex <= headers.length;
+          colIndex++
+        ) {
+          row.getCell(colIndex).alignment = {
+            horizontal: "center",
+            vertical: "middle",
+          };
+        }
+      }
+
+      // ============================================
+      // GENERATE FILE
+      // ============================================
+
+      const buffer =
+        await workbook.xlsx.writeBuffer();
+
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      const safeClassName =
+        selectedClassName.replace(
+          /[^a-zA-Z0-9_-]/g,
+          "_"
+        );
+
+      link.href = url;
+      link.download =
+        `Tabulasi_RIASEC_${safeClassName}.xlsx`;
+
+      document.body.appendChild(link);
+
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (err) {
+      console.error("Download error:", err);
+
+      setError(
+        "Gagal mengunduh Excel: " +
+        (err.message || "Unknown error")
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // ============================================
+  // LOADING
+  // ============================================
+
+  if (loading) {
+    return (
+      <div className="min-h-[350px] flex flex-col items-center justify-center gap-3">
+        <Loader2
+          size={30}
+          className="animate-spin text-blue-600"
+        />
+
+        <p className="text-gray-500 text-sm">
+          Memuat data tabulasi siswa...
+        </p>
+      </div>
+    );
+  }
+
+  // ============================================
+  // TAMPILAN HALAMAN
+  // ============================================
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      
-      {/* HEADER SECTION */}
+    <div className="w-full min-w-0 max-w-full space-y-6 pb-10">
+
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tabulasi Data</h1>
-          <p className="text-gray-500 text-sm">Tabel matriks skor perolehan siswa per kategori.</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Tabulasi Data
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Rekapitulasi jawaban asesmen minat karier
+            berdasarkan nomor soal.
+          </p>
         </div>
 
-        <button 
-          onClick={() => alert("Exporting to CSV...")}
-          className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-all shadow-md shadow-green-200"
-        >
-          <FileSpreadsheet size={20} />
-          <span>Export Excel</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+
+          <button
+            type="button"
+            onClick={loadData}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition"
+          >
+            <RefreshCw size={18} />
+            Refresh
+          </button>
+
+          <button
+            type="button"
+            onClick={downloadExcel}
+            disabled={
+              downloading ||
+              filteredStudents.length === 0 ||
+              !instrumentReady
+            }
+            className="flex items-center justify-center gap-2 px-5 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-sm"
+          >
+            {downloading ? (
+              <Loader2
+                size={19}
+                className="animate-spin"
+              />
+            ) : (
+              <Download size={19} />
+            )}
+
+            {downloading
+              ? "Menyiapkan Excel..."
+              : "Download Tabulasi Data"}
+          </button>
+        </div>
       </div>
 
-      {/* FILTER BAR */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-200 flex flex-col md:flex-row gap-4 items-center shadow-sm">
-        
-        {/* Filter Kelas */}
-        <div className="w-full md:w-48 relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Filter size={18} className="text-gray-400" />
-          </div>
-          <select 
+      {/* FILTER */}
+      <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
+
+        {/* PILIH KELAS */}
+        <div className="relative w-full md:w-56">
+          <Filter
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+
+          <select
             value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
+            onChange={(e) =>
+              setSelectedClass(e.target.value)
+            }
+            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
           >
-            {classList.map(c => <option key={c} value={c}>{c}</option>)}
+            {classes.length === 0 && (
+              <option value="">
+                Belum ada kelas
+              </option>
+            )}
+
+            {classes.map((item) => (
+              <option
+                key={item.id}
+                value={item.id}
+              >
+                {item.name}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Filter Jenis Tes */}
-        <div className="w-full md:w-48 relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Table size={18} className="text-gray-400" />
-          </div>
-          <select 
-            value={selectedTest}
-            onChange={(e) => setSelectedTest(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
-          >
-            <option value="RIASEC">RIASEC</option>
-            <option value="VAK">Gaya Belajar (VAK)</option>
-          </select>
+        {/* JENIS INSTRUMEN */}
+        <div className="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 rounded-xl text-blue-700 text-sm font-semibold">
+          <FileSpreadsheet size={18} />
+          Holland RIASEC
         </div>
 
-        {/* Search */}
-        <div className="w-full relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari nama siswa..." 
+        {/* CARI SISWA */}
+        <div className="relative w-full flex-1">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+          />
+
+          <input
+            type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+            placeholder="Cari nama atau NIS siswa..."
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200"
           />
         </div>
       </div>
 
-      {/* MATRIX TABLE */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-        
-        {/* Info Legend */}
-        <div className="bg-blue-50 px-6 py-3 border-b border-blue-100 flex items-center gap-2 text-sm text-blue-800">
-          <AlertCircle size={16} />
-          <span>Angka yang <strong>di-bold</strong> dan berlatar biru adalah skor tertinggi siswa tersebut.</span>
+      {/* PESAN ERROR */}
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+          <AlertCircle
+            size={19}
+            className="shrink-0"
+          />
+
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* PERINGATAN INSTRUMEN */}
+      {!instrumentReady && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          Jumlah instrumen di database belum sesuai.
+          Ditemukan {questionIds.length} soal utama
+          dan {estimateIds.length} Self-Estimate.
+          Seharusnya terdapat 216 soal utama dan
+          12 Self-Estimate.
+        </div>
+      )}
+
+      {/* RINGKASAN */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm text-gray-500">
+            Hasil Siswa
+          </p>
+
+          <p className="text-3xl font-bold text-gray-900 mt-2">
+            {filteredStudents.length}
+          </p>
+
+          <p className="text-xs text-gray-400 mt-1">
+            Berdasarkan kelas terpilih
+          </p>
         </div>
 
-        {/* Scrollable Table Area */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="py-4 px-4 font-semibold text-sm text-gray-500 w-12 text-center sticky left-0 bg-gray-50 z-10 border-r border-gray-200">No</th>
-                <th className="py-4 pl-4 pr-10 font-semibold text-sm text-gray-500 sticky left-12 bg-gray-50 z-10 border-r border-gray-200 min-w-auto">Identitas Siswa</th>
-                
-                {/* Dynamic Columns Header */}
-                {currentConfig.columns.map((col, idx) => (
-                  <th key={col} className="py-4 px-4 font-bold text-sm text-gray-700 text-center w-20 bg-gray-50" title={currentConfig.fullNames[idx]}>
-                    {col}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm text-gray-500">
+            Soal Utama
+          </p>
+
+          <p className="text-3xl font-bold text-blue-600 mt-2">
+            {questionIds.length}
+          </p>
+
+          <p className="text-xs text-gray-400 mt-1">
+            Jawaban Ya atau Tidak
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm text-gray-500">
+            Self-Estimate
+          </p>
+
+          <p className="text-3xl font-bold text-indigo-600 mt-2">
+            {estimateIds.length}
+          </p>
+
+          <p className="text-xs text-gray-400 mt-1">
+            Nilai 1 sampai 7
+          </p>
+        </div>
+      </div>
+
+      {/* MATRIKS TABULASI */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+
+        <div className="px-5 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h2 className="font-bold text-gray-900">
+              Matriks Jawaban Siswa
+            </h2>
+
+            <p className="text-xs text-gray-500 mt-1">
+              Ya = 1 | Tidak = kosong |
+              Self-Estimate = 1–7
+            </p>
+          </div>
+
+          <span className="text-sm font-medium text-gray-500">
+            {filteredStudents.length} hasil siswa
+          </span>
+        </div>
+
+        {/* KETERANGAN DATA LAMA */}
+        {studentsWithoutAnswers > 0 && (
+          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 text-xs text-amber-800 flex items-start gap-2">
+            <AlertCircle
+              size={16}
+              className="shrink-0"
+            />
+
+            <span>
+              {studentsWithoutAnswers} siswa memiliki
+              hasil tes tanpa jawaban lengkap yang tersimpan.
+              Tanda — berarti jawaban tidak tersedia,
+              bukan jawaban Tidak.
+            </span>
+          </div>
+        )}
+
+        {/* TABEL HORIZONTAL */}
+        <div className="w-full max-w-full overflow-x-auto">
+          <table className="w-max min-w-full border-collapse whitespace-nowrap text-sm">
+
+            <thead>
+              <tr className="bg-blue-50 text-gray-700">
+
+                <th className="sticky left-0 z-20 bg-blue-50 border-r border-b border-gray-200 px-3 py-4 min-w-[52px] text-center">
+                  No
+                </th>
+
+                <th className="sticky left-[52px] z-20 bg-blue-50 border-r border-b border-gray-200 px-4 py-4 min-w-[200px] text-left">
+                  Nama / NIS
+                </th>
+
+                {/* NOMOR SOAL 1-216 */}
+                {questionIds.map((id, index) => (
+                  <th
+                    key={`q-head-${id}`}
+                    title={`Soal nomor ${index + 1}`}
+                    className="border-r border-b border-gray-200 px-3 py-4 min-w-[48px] text-center"
+                  >
+                    {index + 1}
                   </th>
                 ))}
-                
-                <th className="py-4 px-6 font-semibold text-sm text-gray-500 border-l border-gray-200">Kode Dominan</th>
-                <th className="py-4 px-4 font-semibold text-sm text-gray-500 border-l border-gray-200">Konsistensi</th>
+
+                {/* SELF-ESTIMATE 1-12 */}
+                {estimateIds.map((id, index) => (
+                  <th
+                    key={`se-head-${id}`}
+                    className="bg-indigo-50 border-r border-b border-gray-200 px-3 py-4 min-w-[60px] text-center"
+                  >
+                    SE {index + 1}
+                  </th>
+                ))}
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-100">
-              {filteredData.length > 0 ? (
-                filteredData.map((item, index) => (
-                  <motion.tr 
-                    key={item.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50/80 transition-colors"
+            <tbody>
+              {filteredStudents.map(
+                (student, index) => (
+                  <tr
+                    key={student.id}
+                    className="group hover:bg-blue-50/40"
                   >
-                    <td className="py-3 px-4 text-sm text-center text-gray-500 font-medium sticky left-0 bg-white z-10 border-r border-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+
+                    {/* NOMOR URUT */}
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100 px-3 py-3 text-center">
                       {index + 1}
                     </td>
-                    
-                    <td className="py-3 px-4 sticky left-12 bg-white z-10 border-r border-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      <p className="font-bold text-gray-900 text-sm">{item.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">{item.nis}</p>
+
+                    {/* IDENTITAS */}
+                    <td className="sticky left-[52px] z-10 bg-white group-hover:bg-blue-50 border-r border-b border-gray-100 px-4 py-3">
+                      <p className="font-semibold text-gray-900">
+                        {student.name}
+                      </p>
+
+                      <p className="text-xs text-gray-500 mt-1">
+                        {student.nis}
+                      </p>
+
+                      {!hasAnswers(student) && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Jawaban lama tidak tersedia
+                        </p>
+                      )}
                     </td>
 
-                    {/* Dynamic Scores Cells */}
-                    {currentConfig.columns.map(col => {
-                      const score = item.scores[col] || 0;
-                      const active = isHighest(item.scores, col);
-                      return (
-                        <td key={col} className={`py-3 px-4 text-center border-r border-gray-50 last:border-0 ${active ? "bg-blue-50" : ""}`}>
-                          <span className={`inline-block py-1 px-2 rounded-lg text-sm
-                            ${active ? "font-bold text-blue-700" : "text-gray-500"}
-                          `}>
-                            {score}
-                          </span>
-                        </td>
-                      );
-                    })}
+                    {/* JAWABAN 216 SOAL */}
+                    {questionIds.map((id) => (
+                      <td
+                        key={`answer-${id}`}
+                        className="border-r border-b border-gray-100 px-3 py-3 min-w-[48px] text-center text-gray-800"
+                      >
+                        {formatAnswer(student, id)}
+                      </td>
+                    ))}
 
-                    <td className="py-3 px-6 border-l border-gray-100">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-700 border border-gray-200">
-                        {item.dominant}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 border-l border-gray-100">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                        {item.consistency}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))
-              ) : (
+                    {/* JAWABAN 12 SELF-ESTIMATE */}
+                    {estimateIds.map((id) => (
+                      <td
+                        key={`estimate-${id}`}
+                        className="bg-indigo-50/40 border-r border-b border-gray-100 px-3 py-3 min-w-[60px] text-center font-semibold text-indigo-700"
+                      >
+                        {formatEstimate(student, id)}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              )}
+
+              {filteredStudents.length === 0 && (
                 <tr>
-                  <td colSpan={currentConfig.columns.length + 4} className="py-12 text-center text-gray-500">
-                    Data tidak ditemukan untuk kelas ini.
+                  <td
+                    colSpan={
+                      2 +
+                      questionIds.length +
+                      estimateIds.length
+                    }
+                    className="py-16 px-6 text-center text-gray-500"
+                  >
+                    Belum ada hasil tes siswa
+                    untuk kelas atau pencarian ini.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* FOOTER */}
+        <div className="px-5 py-4 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row justify-between gap-2 text-xs text-gray-500">
+          <span>
+            Geser tabel ke kanan untuk melihat seluruh 228 jawaban.
+          </span>
+
+          <span>
+            {studentsWithAnswers} hasil dengan jawaban lengkap
+          </span>
         </div>
       </div>
     </div>

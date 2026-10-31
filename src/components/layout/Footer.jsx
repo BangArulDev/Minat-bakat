@@ -37,10 +37,6 @@ const policies = [
     label: "FAQ - Pertanyaan yang Sering Diajukan",
     href: "https://care-indonesia.com/faq",
   },
-  {
-    label: "Hubungi Kami",
-    href: "https://care-indonesia.com/#contact",
-  },
 ];
 
 export default function Footer() {
@@ -177,16 +173,6 @@ export default function Footer() {
                 </span>
               </li>
             </ul>
-
-            <a
-              href="https://care-indonesia.com/#contact"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
-            >
-              Hubungi Kami
-              <ExternalLink size={15} />
-            </a>
           </div>
         </div>
 

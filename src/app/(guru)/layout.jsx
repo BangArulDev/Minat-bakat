@@ -62,8 +62,7 @@ export default function GuruLayout({ children }) {
           icon: FileBarChart,
           // Ini adalah Sub-Menu (Anak)
           subItems: [
-            { name: "Data Hasil Pilihan", href: "/guru/analisis/pilihan" },
-            { name: "Profil Individu", href: "/guru/analisis/individu" },
+            { name: "Hasil Tes Siswa", href: "/guru/analisis/hasil-tes" },
             { name: "Profil Kelompok", href: "/guru/analisis/kelompok" },
             { name: "Data Siswa", href: "/guru/analisis/data-siswa" },
           ],
@@ -107,6 +106,12 @@ export default function GuruLayout({ children }) {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  useEffect(() => {
+    if (pathname?.startsWith("/guru/analisis")) {
+      setOpenSubMenu("analisis");
+    }
+  }, [pathname]);
 
   // Fungsi toggle sub-menu
   const handleSubMenuClick = (menuId) => {

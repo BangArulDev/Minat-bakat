@@ -388,20 +388,32 @@ export async function getResults() {
       orderBy: { createdAt: 'desc' }
     });
 
-    const enriched = results.map(r => ({
-      id: r.id,
-      nis: r.student.nis || r.student.user.username,
-      name: r.student.fullName,
-      className: r.student.classroom.name,
-      testType: "RIASEC",
-      date: r.createdAt.toLocaleDateString("id-ID"),
-      result: r.dominantCode || "-",
-      // Kembalikan rawScores sebagai JSON string agar halaman tabulasi bisa parse skor per kategori
-      score: r.rawScores || "{}",
-      consistency: r.consistency || "-",
-      status: "Selesai",
-      color: "bg-blue-100 text-blue-700 border-blue-200"
-    }));
+    const enriched = results.map(r => {
+      let parsedScores = {};
+      try {
+        parsedScores = typeof r.rawScores === "string" ? JSON.parse(r.rawScores || "{}") : (r.rawScores || {});
+      } catch (e) {
+        parsedScores = {};
+      }
+
+      return {
+        id: r.id,
+        nis: r.student.nis || r.student.user.username,
+        name: r.student.fullName,
+        className: r.student.classroom.name,
+        testType: "RIASEC",
+        date: r.createdAt.toLocaleDateString("id-ID"),
+        createdAt: r.createdAt.toISOString(),
+        result: r.dominantCode || "-",
+        dominantCode: r.dominantCode || "-",
+        // score tetap r.rawScores agar halaman tabulasi tidak rusak
+        score: r.rawScores || "{}",
+        rawScores: parsedScores,
+        consistency: r.consistency || "-",
+        status: "Selesai",
+        color: "bg-blue-100 text-blue-700 border-blue-200"
+      };
+    });
 
     return { success: true, data: enriched };
   } catch(error) {
@@ -432,15 +444,25 @@ export async function getDetailedResults() {
       orderBy: { createdAt: 'desc' }
     });
 
-    const detailed = results.map(r => ({
-      id: r.id,
-      nis: r.student.nis || r.student.user.username,
-      name: r.student.fullName,
-      className: r.student.classroom.name,
-      dominantCode: r.dominantCode || "-",
-      rawScores: JSON.parse(r.rawScores || "{}"),
-      date: r.createdAt.toISOString()
-    }));
+    const detailed = results.map(r => {
+      let parsedScores = {};
+      try {
+        parsedScores = typeof r.rawScores === "string" ? JSON.parse(r.rawScores || "{}") : (r.rawScores || {});
+      } catch (e) {
+        parsedScores = {};
+      }
+
+      return {
+        id: r.id,
+        nis: r.student.nis || r.student.user.username,
+        name: r.student.fullName,
+        className: r.student.classroom.name,
+        dominantCode: r.dominantCode || "-",
+        rawScores: parsedScores,
+        consistency: r.consistency || "-",
+        date: r.createdAt.toISOString()
+      };
+    });
 
     return { success: true, data: detailed };
   } catch(error) {

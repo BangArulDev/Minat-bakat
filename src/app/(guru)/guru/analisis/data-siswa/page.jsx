@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import { getStudents, getResults } from "@/app/actions/guru";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AnalisisDataSiswaPage() {
+  const router = useRouter();
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
   const [filterClass, setFilterClass] = useState("Semua Kelas");
@@ -261,7 +263,10 @@ export default function AnalisisDataSiswaPage() {
                             <div className="absolute right-8 top-10 w-40 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden text-left origin-top-right">
                               {/* Opsi beda tergantung status */}
                               {item.status === "Selesai" ? (
-                                <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <button 
+                                  onClick={() => router.push(`/guru/analisis/hasil-tes?nis=${item.nis}`)}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                >
                                   <Eye size={16} /> Lihat Hasil
                                 </button>
                               ) : (

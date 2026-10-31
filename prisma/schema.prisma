@@ -1,104 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String?  @unique
-  username  String?  @unique
-  password  String
-  role      String   // "GURU" or "SISWA"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  teacherProfile TeacherProfile?
-  studentProfile StudentProfile?
-}
-
-model TeacherProfile {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName    String
-  nip         String?
-  gender      String?
-  whatsapp    String?
-  schoolName  String
-  schoolCode  String?
-  quota       Int      @default(0)
-
-  classrooms  Classroom[]
-  transactions Transaction[]
-}
-
-model Classroom {
-  id          String   @id @default(uuid())
-  classCode   String   @unique
-  name        String
-  teacherId   String
-  teacher     TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-
-  students    StudentProfile[]
-}
-
-model StudentProfile {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName    String
-  nis         String?
-  gender      String?
-  birthPlace  String?
-  birthDate   DateTime?
-  classroomId String
-  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
-
-  results     RiasecResult[]
-}
 
 model RiasecResult {
   id            String   @id @default(uuid())
   studentId     String
   student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  rawScores     String   // Disimpan sebagai JSON string
+
+  rawScores     String
   dominantCode  String
   consistency   String?
+
+  // Jawaban soal 1 sampai 216
+  answers       Json?
+
+  // Nilai Self-Estimate 1 sampai 12
+  selfEstimates Json?
+
   createdAt     DateTime @default(now())
-}
-
-model RiasecQuestion {
-  id        Int      @id
-  group     String
-  type      String
-  statement String
-}
-
-model RiasecSelfEstimate {
-  id        Int      @id
-  aspect    String
-  type      String
-  field     String
-}
-
-model Transaction {
-  id            String   @id @default(uuid())
-  orderId       String   @unique
-  teacherId     String
-  teacher       TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  amount        Int
-  status        String   @default("PENDING") // PENDING, SUCCESS, FAILED, CANCEL, EXPIRED
-  quotaAdded    Int      @default(0) // Berapa kuota yang dibeli
-  snapToken     String?
-  paymentType   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 }

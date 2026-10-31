@@ -43,6 +43,10 @@ import {
   getConsistencyLevel,
 } from "@/utils/riasecScoring";
 
+// ============================================
+// KONFIGURASI TES
+// ============================================
+
 const ITEMS_PER_PAGE = 10;
 
 const STEPS = [
@@ -76,6 +80,10 @@ const STEPS = [
   },
 ];
 
+// ============================================
+// HALAMAN TES RIASEC SISWA
+// ============================================
+
 export default function TesRiasecPage() {
   const router = useRouter();
 
@@ -96,7 +104,7 @@ export default function TesRiasecPage() {
   const [showValidation, setShowValidation] = useState(false);
 
   // ============================================
-  // AMBIL PERTANYAAN DARI DATABASE
+  // AMBIL INSTRUMEN DARI DATABASE
   // ============================================
 
   useEffect(() => {
@@ -122,7 +130,8 @@ export default function TesRiasecPage() {
           estimates.length !== 12
         ) {
           throw new Error(
-            "Instrumen tidak lengkap. Pastikan terdapat 216 soal utama dan 12 Self-Estimate."
+            "Instrumen belum lengkap. " +
+            "Diperlukan 216 soal utama dan 12 Self-Estimate."
           );
         }
 
@@ -130,10 +139,14 @@ export default function TesRiasecPage() {
         setDbEstimates(estimates);
       } catch (error) {
         if (mounted) {
-          setLoadingError(error.message);
+          setLoadingError(
+            error.message || "Gagal memuat instrumen."
+          );
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
@@ -145,7 +158,7 @@ export default function TesRiasecPage() {
   }, []);
 
   // ============================================
-  // DATA STEP
+  // PERTANYAAN DAN HALAMAN
   // ============================================
 
   const step = STEPS[currentStep];
@@ -154,7 +167,7 @@ export default function TesRiasecPage() {
     if (!step.group) return [];
 
     return dbQuestions.filter(
-      (q) => q.group === step.group
+      (question) => question.group === step.group
     );
   }, [step.group, dbQuestions]);
 
@@ -172,7 +185,7 @@ export default function TesRiasecPage() {
   }, [currentQuestions, currentPage]);
 
   // ============================================
-  // PROGRESS
+  // PROGRES PENGERJAAN
   // ============================================
 
   const totalAnswerable = 228;
@@ -183,22 +196,39 @@ export default function TesRiasecPage() {
 
   const progressPercent = Math.min(
     100,
-    Math.round((totalAnswered / totalAnswerable) * 100)
+    Math.round(
+      (totalAnswered / totalAnswerable) * 100
+    )
   );
 
-  const isCurrentPageComplete = useMemo(() => {
-    if (step.id === "intro") return true;
+  // ============================================
+  // VALIDASI HALAMAN
+  // ============================================
 
-    if (step.id === "self-estimate") {
-      return dbEstimates.every(
-        (se) =>
-          selfEstimates[se.id] !== undefined &&
-          selfEstimates[se.id] !== ""
-      );
+  const isCurrentPageComplete = useMemo(() => {
+    if (step.id === "intro") {
+      return true;
     }
 
-    return pageQuestions.every(
-      (q) => answers[q.id] !== undefined
+    if (step.id === "self-estimate") {
+      return dbEstimates.every((estimate) => {
+        const value = selfEstimates[estimate.id];
+
+        return (
+          Number.isInteger(value) &&
+          value >= 1 &&
+          value <= 7
+        );
+      });
+    }
+
+    return (
+      pageQuestions.length > 0 &&
+      pageQuestions.every(
+        (question) =>
+          answers[question.id] === 0 ||
+          answers[question.id] === 1
+      )
     );
   }, [
     step.id,
@@ -208,40 +238,60 @@ export default function TesRiasecPage() {
     dbEstimates,
   ]);
 
+  // ============================================
+  // VALIDASI KESELURUHAN STEP
+  // ============================================
+
   const isStepComplete = useCallback(
     (stepIndex) => {
       const selectedStep = STEPS[stepIndex];
 
-      if (selectedStep.id === "intro") return true;
+      if (selectedStep.id === "intro") {
+        return true;
+      }
 
       if (selectedStep.id === "self-estimate") {
-        return dbEstimates.every(
-          (se) =>
-            selfEstimates[se.id] !== undefined &&
-            selfEstimates[se.id] !== ""
+        return (
+          dbEstimates.length === 12 &&
+          dbEstimates.every((estimate) => {
+            const value = selfEstimates[estimate.id];
+
+            return (
+              Number.isInteger(value) &&
+              value >= 1 &&
+              value <= 7
+            );
+          })
         );
       }
 
       const questions = dbQuestions.filter(
-        (q) => q.group === selectedStep.group
+        (question) =>
+          question.group === selectedStep.group
       );
 
       return (
         questions.length > 0 &&
         questions.every(
-          (q) => answers[q.id] !== undefined
+          (question) =>
+            answers[question.id] === 0 ||
+            answers[question.id] === 1
         )
       );
     },
-    [answers, selfEstimates, dbQuestions, dbEstimates]
+    [
+      answers,
+      selfEstimates,
+      dbQuestions,
+      dbEstimates,
+    ]
   );
 
   // ============================================
-  // INPUT JAWABAN
+  // INPUT JAWABAN YA / TIDAK
   // ============================================
 
   const handleAnswer = (questionId, value) => {
-    // YA = 1, TIDAK = 0
     setAnswers((prev) => ({
       ...prev,
       [questionId]: value,
@@ -250,8 +300,11 @@ export default function TesRiasecPage() {
     setShowValidation(false);
   };
 
+  // ============================================
+  // INPUT SELF-ESTIMATE 1–7
+  // ============================================
+
   const handleSelfEstimate = (id, value) => {
-    // Self-Estimate = nilai 1 sampai 7
     setSelfEstimates((prev) => ({
       ...prev,
       [id]: value,
@@ -261,7 +314,7 @@ export default function TesRiasecPage() {
   };
 
   // ============================================
-  // SIMPAN SELURUH HASIL TES
+  // SIMPAN HASIL ASESMEN
   // ============================================
 
   const handleSaveResult = async () => {
@@ -270,15 +323,15 @@ export default function TesRiasecPage() {
     const mainComplete =
       dbQuestions.length === 216 &&
       dbQuestions.every(
-        (q) =>
-          answers[q.id] === 0 ||
-          answers[q.id] === 1
+        (question) =>
+          answers[question.id] === 0 ||
+          answers[question.id] === 1
       );
 
     const estimateComplete =
       dbEstimates.length === 12 &&
-      dbEstimates.every((se) => {
-        const value = selfEstimates[se.id];
+      dbEstimates.every((estimate) => {
+        const value = selfEstimates[estimate.id];
 
         return (
           Number.isInteger(value) &&
@@ -289,9 +342,12 @@ export default function TesRiasecPage() {
 
     if (!mainComplete || !estimateComplete) {
       setShowValidation(true);
+
       setSaveError(
-        "Seluruh 216 soal dan 12 Self-Estimate harus dijawab sebelum hasil disimpan."
+        "Seluruh 216 pertanyaan utama dan " +
+        "12 Self-Estimate harus dijawab."
       );
+
       return;
     }
 
@@ -299,8 +355,8 @@ export default function TesRiasecPage() {
     setSaveError(null);
 
     try {
-      // Perhitungan RIASEC tetap menggunakan
-      // fungsi asli proyek CARE Indonesia.
+      // Perhitungan tetap mengikuti
+      // algoritma RIASEC asli CARE Indonesia.
       const scores = calculateScores(
         answers,
         selfEstimates,
@@ -313,10 +369,8 @@ export default function TesRiasecPage() {
       const consistency =
         getConsistencyLevel(code).level;
 
-      // PENTING:
-      // Kirim seluruh jawaban ke database,
-      // bukan hanya skor akhirnya.
-      const res = await saveRiasecResult(
+      // Simpan skor beserta jawaban asli.
+      const result = await saveRiasecResult(
         scores,
         code,
         consistency,
@@ -324,13 +378,14 @@ export default function TesRiasecPage() {
         selfEstimates
       );
 
-      if (!res?.success) {
+      if (!result?.success) {
         throw new Error(
-          res?.error || "Gagal menyimpan hasil tes."
+          result?.error || "Gagal menyimpan hasil tes."
         );
       }
 
-      // Cache untuk halaman hasil siswa
+      // Cache hanya sebagai data bantu browser.
+      // Database tetap menjadi sumber utama.
       try {
         sessionStorage.setItem(
           "riasec_answers",
@@ -358,7 +413,7 @@ export default function TesRiasecPage() {
   };
 
   // ============================================
-  // NAVIGASI SELANJUTNYA
+  // TOMBOL SELANJUTNYA
   // ============================================
 
   const handleNext = async () => {
@@ -369,7 +424,10 @@ export default function TesRiasecPage() {
       return;
     }
 
-    if (step.group && currentPage < totalPages - 1) {
+    if (
+      step.group &&
+      currentPage < totalPages - 1
+    ) {
       setCurrentPage((prev) => prev + 1);
       setShowValidation(false);
       return;
@@ -386,7 +444,7 @@ export default function TesRiasecPage() {
   };
 
   // ============================================
-  // NAVIGASI SEBELUMNYA
+  // TOMBOL SEBELUMNYA
   // ============================================
 
   const handlePrev = () => {
@@ -400,20 +458,21 @@ export default function TesRiasecPage() {
     }
 
     if (currentStep > 0) {
-      const prevStep = STEPS[currentStep - 1];
+      const previousStep = STEPS[currentStep - 1];
 
       setCurrentStep((prev) => prev - 1);
 
-      if (prevStep.group) {
-        const previousQuestions = dbQuestions.filter(
-          (q) => q.group === prevStep.group
+      if (previousStep.group) {
+        const questions = dbQuestions.filter(
+          (question) =>
+            question.group === previousStep.group
         );
 
         setCurrentPage(
           Math.max(
             0,
             Math.ceil(
-              previousQuestions.length / ITEMS_PER_PAGE
+              questions.length / ITEMS_PER_PAGE
             ) - 1
           )
         );
@@ -442,9 +501,10 @@ export default function TesRiasecPage() {
     return (
       <div className="flex items-center justify-center min-h-[350px] gap-3">
         <Loader2
-          className="animate-spin text-blue-600"
           size={25}
+          className="animate-spin text-blue-600"
         />
+
         <p className="text-gray-500">
           Memuat pertanyaan RIASEC...
         </p>
@@ -452,15 +512,21 @@ export default function TesRiasecPage() {
     );
   }
 
+  // ============================================
+  // ERROR MEMUAT INSTRUMEN
+  // ============================================
+
   if (loadingError) {
     return (
       <div className="max-w-xl mx-auto mt-10 bg-red-50 border border-red-200 rounded-2xl p-6">
         <div className="flex gap-3 text-red-700">
           <AlertCircle className="shrink-0" />
+
           <div>
             <h2 className="font-bold">
               Gagal Memuat Tes
             </h2>
+
             <p className="text-sm mt-2">
               {loadingError}
             </p>
@@ -468,6 +534,7 @@ export default function TesRiasecPage() {
         </div>
 
         <button
+          type="button"
           onClick={() => window.location.reload()}
           className="mt-5 bg-blue-600 text-white px-5 py-2 rounded-xl"
         >
@@ -478,15 +545,15 @@ export default function TesRiasecPage() {
   }
 
   // ============================================
-  // HALAMAN TES UTAMA
+  // TAMPILAN UTAMA
   // ============================================
 
   return (
     <div className="max-w-4xl mx-auto pb-12 space-y-6">
 
-      {/* HEADER PROGRESS */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+      {/* HEADER PROGRES */}
 
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -494,11 +561,12 @@ export default function TesRiasecPage() {
                 size={22}
                 className="text-blue-600"
               />
+
               Tes Minat Karier Holland RIASEC
             </h1>
 
             <p className="text-sm text-gray-500 mt-1">
-              216 pertanyaan + 12 self-estimate
+              216 pertanyaan + 12 Self-Estimate
             </p>
           </div>
 
@@ -514,6 +582,7 @@ export default function TesRiasecPage() {
         </div>
 
         {/* PROGRESS BAR */}
+
         <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600"
@@ -527,7 +596,8 @@ export default function TesRiasecPage() {
           />
         </div>
 
-        {/* STEP INDICATORS */}
+        {/* INDIKATOR BAGIAN */}
+
         <div className="flex items-center justify-between mt-4 gap-1">
           {STEPS.map((item, index) => {
             const Icon = item.icon;
@@ -537,7 +607,7 @@ export default function TesRiasecPage() {
             return (
               <div
                 key={item.id}
-                className={`flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs font-medium ${
                   active
                     ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
                     : completed
@@ -561,24 +631,14 @@ export default function TesRiasecPage() {
       </div>
 
       {/* KONTEN TES */}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={`${currentStep}-${currentPage}`}
-          initial={{
-            opacity: 0,
-            x: 20,
-          }}
-          animate={{
-            opacity: 1,
-            x: 0,
-          }}
-          exit={{
-            opacity: 0,
-            x: -20,
-          }}
-          transition={{
-            duration: 0.2,
-          }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.2 }}
         >
           {step.id === "intro" && (
             <IntroStep />
@@ -608,8 +668,10 @@ export default function TesRiasecPage() {
       </AnimatePresence>
 
       {/* NAVIGASI */}
+
       <div className="flex items-center justify-between gap-3">
         <button
+          type="button"
           onClick={handlePrev}
           disabled={
             saving ||
@@ -628,6 +690,7 @@ export default function TesRiasecPage() {
         )}
 
         <button
+          type="button"
           onClick={handleNext}
           disabled={saving}
           className="flex items-center justify-center gap-2 px-5 sm:px-6 py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 shadow-lg shadow-blue-200"
@@ -655,6 +718,7 @@ export default function TesRiasecPage() {
       </div>
 
       {/* ERROR PENYIMPANAN */}
+
       {saveError && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -685,6 +749,7 @@ export default function TesRiasecPage() {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setSaveError(null)}
                 className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-semibold"
               >
@@ -692,6 +757,7 @@ export default function TesRiasecPage() {
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setSaveError(null);
                   handleSaveResult();
@@ -706,6 +772,7 @@ export default function TesRiasecPage() {
       )}
 
       {/* OVERLAY MENYIMPAN */}
+
       {saving && (
         <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
           <div className="w-16 h-16 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
@@ -715,7 +782,7 @@ export default function TesRiasecPage() {
           </p>
 
           <p className="text-sm text-gray-500">
-            Mohon jangan tutup halaman ini.
+            Jangan menutup halaman selama proses penyimpanan.
           </p>
         </div>
       )}
@@ -724,12 +791,13 @@ export default function TesRiasecPage() {
 }
 
 // ============================================
-// HALAMAN PENGANTAR
+// KOMPONEN PENGANTAR TES
 // ============================================
 
 function IntroStep() {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+
       <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 px-6 sm:px-8 py-10 text-white">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -748,10 +816,11 @@ function IntroStep() {
         </div>
 
         <p className="text-blue-100 leading-relaxed">
-          Tes ini membantu kamu mengenali minat dan
-          kecenderungan karier berdasarkan teori Holland
-          RIASEC. Tidak ada jawaban benar atau salah.
-          Jawablah sesuai dengan minat dan kondisi dirimu.
+          Tes ini membantu kamu mengenali minat
+          dan kecenderungan karier berdasarkan teori
+          Holland RIASEC. Tidak ada jawaban benar
+          atau salah. Jawablah sesuai minat dan
+          kondisi dirimu.
         </p>
       </div>
 
@@ -806,6 +875,7 @@ function IntroStep() {
         </div>
 
         {/* PETUNJUK */}
+
         <div className="bg-amber-50 border border-amber-100 rounded-xl p-5">
           <h3 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
             <BookOpen size={18} />
@@ -818,29 +888,33 @@ function IntroStep() {
             </li>
 
             <li>
-              Pilih <strong>Ya</strong> jika sesuai dengan
-              minat atau kondisimu, atau{" "}
-              <strong>Tidak</strong> jika tidak sesuai.
+              Pilih <strong>Ya</strong> jika sesuai
+              dengan minat atau kondisimu.
+              Pilih <strong>Tidak</strong> jika
+              tidak sesuai.
             </li>
 
             <li>
-              Untuk bagian Self-Estimate, berikan nilai
-              1 sampai 7 sesuai penilaian terhadap dirimu.
+              Pada bagian Self-Estimate,
+              berikan nilai 1–7 sesuai
+              penilaian terhadap dirimu.
             </li>
 
             <li>
-              Jawablah sesuai dirimu sendiri, bukan harapan
-              orang lain.
+              Jawablah sesuai keadaan dirimu,
+              bukan berdasarkan harapan orang lain.
             </li>
           </ol>
         </div>
 
-        {/* INFORMASI JUMLAH SOAL */}
+        {/* JUMLAH SOAL */}
+
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-gray-50 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-gray-900">
               216
             </p>
+
             <p className="text-xs text-gray-500 mt-1">
               Pertanyaan Utama
             </p>
@@ -850,6 +924,7 @@ function IntroStep() {
             <p className="text-2xl font-bold text-gray-900">
               12
             </p>
+
             <p className="text-xs text-gray-500 mt-1">
               Self-Estimate
             </p>
@@ -858,6 +933,7 @@ function IntroStep() {
           <div className="bg-gray-50 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-1">
               <Clock size={18} />
+
               <p className="text-2xl font-bold text-gray-900">
                 30
               </p>
@@ -874,7 +950,7 @@ function IntroStep() {
 }
 
 // ============================================
-// HALAMAN SOAL UTAMA 1-216
+// KOMPONEN PERTANYAAN UTAMA
 // ============================================
 
 function QuestionStep({
@@ -888,6 +964,9 @@ function QuestionStep({
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+
+      {/* JUDUL BAGIAN */}
+
       <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
         <h2 className="font-bold text-gray-900">
           Bagian: {groupLabel}
@@ -898,19 +977,22 @@ function QuestionStep({
         </span>
       </div>
 
+      {/* DAFTAR PERTANYAAN */}
+
       <div className="divide-y divide-gray-100">
-        {questions.map((q, index) => {
+        {questions.map((question, index) => {
           const isAnswered =
-            answers[q.id] !== undefined;
+            answers[question.id] !== undefined;
 
           const isUnanswered =
             showValidation && !isAnswered;
 
-          const typeDesc = riasecDescriptions[q.type];
+          const typeDesc =
+            riasecDescriptions[question.type];
 
           return (
             <motion.div
-              key={q.id}
+              key={question.id}
               initial={{
                 opacity: 0,
                 y: 10,
@@ -931,23 +1013,28 @@ function QuestionStep({
               }`}
             >
               <div className="flex items-start gap-4 flex-1 min-w-0">
+
                 {/* NOMOR SOAL */}
+
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
                   style={{
                     backgroundColor:
-                      typeDesc?.colorLight || "#f3f4f6",
+                      typeDesc?.colorLight ||
+                      "#f3f4f6",
                     color:
-                      typeDesc?.color || "#6b7280",
+                      typeDesc?.color ||
+                      "#6b7280",
                   }}
                 >
-                  {q.id}
+                  {question.id}
                 </div>
 
-                {/* PERNYATAAN */}
+                {/* TEKS PERNYATAAN */}
+
                 <div className="flex-1">
                   <p className="text-sm text-gray-800 font-medium leading-relaxed">
-                    {q.statement}
+                    {question.statement}
                   </p>
 
                   {isUnanswered && (
@@ -959,13 +1046,19 @@ function QuestionStep({
                 </div>
               </div>
 
-              {/* PILIHAN JAWABAN */}
+              {/* PILIHAN YA / TIDAK */}
+
               <div className="flex gap-2 sm:shrink-0 ml-14 sm:ml-0">
                 <button
                   type="button"
-                  onClick={() => onAnswer(q.id, 1)}
+                  onClick={() =>
+                    onAnswer(question.id, 1)
+                  }
+                  aria-pressed={
+                    answers[question.id] === 1
+                  }
                   className={`px-5 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                    answers[q.id] === 1
+                    answers[question.id] === 1
                       ? "bg-blue-600 text-white border-blue-600 shadow-md"
                       : "bg-white text-gray-600 border-gray-200 hover:border-blue-400"
                   }`}
@@ -975,9 +1068,14 @@ function QuestionStep({
 
                 <button
                   type="button"
-                  onClick={() => onAnswer(q.id, 0)}
+                  onClick={() =>
+                    onAnswer(question.id, 0)
+                  }
+                  aria-pressed={
+                    answers[question.id] === 0
+                  }
                   className={`px-5 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                    answers[q.id] === 0
+                    answers[question.id] === 0
                       ? "bg-gray-700 text-white border-gray-700 shadow-md"
                       : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
                   }`}
@@ -991,6 +1089,7 @@ function QuestionStep({
       </div>
 
       {/* INDIKATOR HALAMAN */}
+
       {totalPages > 1 && (
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-center gap-2 flex-wrap">
           {Array.from({
@@ -1012,7 +1111,7 @@ function QuestionStep({
 }
 
 // ============================================
-// HALAMAN SELF-ESTIMATE 1-12
+// KOMPONEN SELF-ESTIMATE
 // ============================================
 
 function SelfEstimateStep({
@@ -1022,15 +1121,20 @@ function SelfEstimateStep({
   showValidation,
 }) {
   const pengetahuan = dbEstimates.filter(
-    (se) => se.aspect === "Pengetahuan"
+    (estimate) =>
+      estimate.aspect === "Pengetahuan"
   );
 
   const keterampilan = dbEstimates.filter(
-    (se) => se.aspect === "Keterampilan"
+    (estimate) =>
+      estimate.aspect === "Keterampilan"
   );
 
   return (
     <div className="space-y-6">
+
+      {/* PETUNJUK SELF-ESTIMATE */}
+
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5">
         <h3 className="font-bold text-indigo-800 flex items-center gap-2 mb-2">
           <Star size={18} />
@@ -1038,12 +1142,16 @@ function SelfEstimateStep({
         </h3>
 
         <p className="text-sm text-indigo-700 leading-relaxed">
-          Berikan nilai <strong>1 sampai 7</strong> pada
-          setiap bidang sesuai penilaian dirimu sendiri.
-          Nilai 1 berarti sangat rendah, sedangkan nilai
-          7 berarti sangat tinggi.
+          Berikan nilai{" "}
+          <strong>1 sampai 7</strong>{" "}
+          pada setiap bidang sesuai penilaian
+          dirimu sendiri. Nilai 1 berarti sangat
+          rendah, sedangkan nilai 7 berarti
+          sangat tinggi.
         </p>
       </div>
+
+      {/* KELOMPOK PENGETAHUAN */}
 
       <SelfEstimateGroup
         title="Pengetahuan Diri"
@@ -1053,6 +1161,8 @@ function SelfEstimateStep({
         onEstimate={onEstimate}
         showValidation={showValidation}
       />
+
+      {/* KELOMPOK KETERAMPILAN */}
 
       <SelfEstimateGroup
         title="Keterampilan Diri"
@@ -1067,7 +1177,8 @@ function SelfEstimateStep({
 }
 
 // ============================================
-// KOMPONEN PENILAIAN SELF-ESTIMATE
+// KOMPONEN PENILAIAN SKALA 1–7
+// TANPA LABEL R, I, A, S, E, C
 // ============================================
 
 function SelfEstimateGroup({
@@ -1080,6 +1191,9 @@ function SelfEstimateGroup({
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+
+      {/* HEADER KELOMPOK */}
+
       <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
         <h3 className="font-bold text-gray-900">
           {title}
@@ -1090,99 +1204,97 @@ function SelfEstimateGroup({
         </p>
       </div>
 
+      {/* DAFTAR BIDANG */}
+
       <div className="divide-y divide-gray-100">
-        {items.map((se) => {
-          const currentValue = estimates[se.id];
+        {items.map((estimate) => {
+          const currentValue =
+            estimates[estimate.id];
 
           const isUnanswered =
             showValidation &&
-            (
-              currentValue === undefined ||
-              currentValue === ""
-            );
+            (currentValue === undefined ||
+              currentValue === "");
 
-          const fieldParts = se.field.split("—");
+          const field = String(
+            estimate.field || ""
+          );
+
+          const fieldParts = field.split("—");
 
           const fieldTitle =
-            fieldParts[0]?.trim() || se.field;
+            fieldParts[0]?.trim() || field;
 
           const fieldDesc =
-            fieldParts[1]?.trim() || "";
-
-          const typeDesc =
-            riasecDescriptions[se.type];
+            fieldParts.slice(1).join("—").trim();
 
           return (
             <div
-              key={se.id}
+              key={estimate.id}
               className={`px-5 sm:px-6 py-5 ${
                 isUnanswered ? "bg-red-50" : ""
               }`}
             >
-              <div className="flex items-start gap-3 mb-4">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
-                  style={{
-                    backgroundColor:
-                      typeDesc?.colorLight || "#f3f4f6",
-                    color:
-                      typeDesc?.color || "#6b7280",
-                  }}
-                >
-                  {se.type}
-                </div>
+              {/* NAMA BIDANG */}
 
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">
-                    {fieldTitle}
-                  </p>
+              <div className="mb-4">
+                <p className="font-semibold text-gray-900 text-sm leading-relaxed">
+                  {fieldTitle}
+                </p>
 
-                  {fieldDesc && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {fieldDesc}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* NILAI 1 SAMPAI 7 */}
-              <div className="ml-0 sm:ml-12">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-400">
-                    Rendah
-                  </span>
-
-                  {[1, 2, 3, 4, 5, 6, 7].map(
-                    (value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() =>
-                          onEstimate(se.id, value)
-                        }
-                        className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${
-                          currentValue === value
-                            ? "bg-blue-600 text-white border-blue-600 shadow-md scale-110"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-                        }`}
-                      >
-                        {value}
-                      </button>
-                    )
-                  )}
-
-                  <span className="text-xs text-gray-400">
-                    Tinggi
-                  </span>
-                </div>
-
-                {isUnanswered && (
-                  <p className="text-xs text-red-500 mt-3 flex items-center gap-1">
-                    <AlertCircle size={13} />
-                    Belum dinilai
+                {fieldDesc && (
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                    {fieldDesc}
                   </p>
                 )}
               </div>
+
+              {/* SKALA NILAI 1–7 */}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 mr-1">
+                  Rendah
+                </span>
+
+                {[1, 2, 3, 4, 5, 6, 7].map(
+                  (value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        onEstimate(
+                          estimate.id,
+                          value
+                        )
+                      }
+                      aria-label={`Nilai ${value} untuk ${fieldTitle}`}
+                      aria-pressed={
+                        currentValue === value
+                      }
+                      className={`w-10 h-10 rounded-xl text-sm font-bold border transition-all ${
+                        currentValue === value
+                          ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  )
+                )}
+
+                <span className="text-xs font-medium text-gray-500 ml-1">
+                  Tinggi
+                </span>
+              </div>
+
+              {/* VALIDASI NILAI */}
+
+              {isUnanswered && (
+                <p className="text-xs text-red-500 mt-3 flex items-center gap-1">
+                  <AlertCircle size={13} />
+                  Belum dinilai
+                </p>
+              )}
             </div>
           );
         })}

@@ -1,308 +1,880 @@
+
 "use server";
+
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
-import { getDB, saveDB, generateId } from "@/lib/db";
+import { getDB, saveDB } from "@/lib/db";
 
-// === Helper (Prisma) ===
+// ============================================
+// HELPER AUTENTIKASI GURU
+// ============================================
+
 async function requireGuru() {
   const session = await auth();
-  if (!session?.user) throw new Error("Not authenticated");
-  
+
+  if (!session?.user?.id) {
+    throw new Error("Silakan login terlebih dahulu.");
+  }
+
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { teacherProfile: true }
+    where: {
+      id: session.user.id,
+    },
+    include: {
+      teacherProfile: true,
+    },
   });
-  
-  if (!user || user.role !== "GURU") throw new Error("Unauthorized");
-  if (!user.teacherProfile) throw new Error("Profil guru tidak ditemukan");
-  
-  return { user, teacherProfile: user.teacherProfile };
+
+  if (!user || user.role !== "GURU") {
+    throw new Error("Akses hanya untuk guru.");
+  }
+
+  if (!user.teacherProfile) {
+    throw new Error("Profil guru tidak ditemukan.");
+  }
+
+  return {
+    user,
+    teacherProfile: user.teacherProfile,
+  };
 }
 
-// === Helper (Mock DB for legacy functions) ===
+// ============================================
+// HELPER DATABASE LAMA
+// Dipertahankan untuk kompatibilitas transaksi
+// ============================================
+
 async function requireGuruMock() {
   const session = await auth();
-  if (!session?.user) throw new Error("Not authenticated");
-  const db = getDB();
-  const user = db.users.find(u => u.id === session.user.id || u.username === session.user.username);
-  // Allow if Prisma user exists but mock user doesn't, we just mock the user ID.
-  if (!user) {
-     return { db, user: { id: session.user.id, role: "GURU" } };
+
+  if (!session?.user?.id) {
+    throw new Error("Silakan login terlebih dahulu.");
   }
+
+  const db = getDB();
+
+  const user = db.users.find(
+    (u) =>
+      u.id === session.user.id ||
+      u.username === session.user.username
+  );
+
+  if (!user) {
+    return {
+      db,
+      user: {
+        id: session.user.id,
+        role: "GURU",
+      },
+    };
+  }
+
   return { db, user };
 }
 
-// === KELAS ===
+// ============================================
+// DATA MASTER - KELAS
+// ============================================
+
 export async function getClassrooms() {
   try {
     const { teacherProfile } = await requireGuru();
-    
+
     const classrooms = await prisma.classroom.findMany({
-      where: { teacherId: teacherProfile.id },
+      where: {
+        teacherId: teacherProfile.id,
+      },
       include: {
         _count: {
-          select: { students: true }
-        }
+          select: {
+            students: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: {
+        createdAt: "desc",
+      },
     });
-    
-    const enriched = classrooms.map(c => ({
+
+    const enriched = classrooms.map((c) => ({
       id: c.id,
       code: c.classCode,
       name: c.name,
-      status: "active", // Tidak ada di skema Prisma, di-hardcode sementara
+      status: "active",
       createdAt: c.createdAt.toLocaleDateString("id-ID"),
-      studentCount: c._count.students
+      studentCount: c._count.students,
     }));
-    
-    return { success: true, data: enriched };
+
+    return {
+      success: true,
+      data: enriched,
+    };
   } catch (error) {
     console.error("Error getClassrooms:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
+
+// ============================================
+// SIMPAN KELAS
+// ============================================
 
 export async function saveClassroom(data) {
   try {
     const { teacherProfile } = await requireGuru();
-    
-    // UI mungkin mengirim data.id berupa timestamp (number) jika baru ditambah
-    const isUpdate = typeof data.id === 'string' && data.id.length > 20;
-    
+
+    const classCode = String(data.code || "").trim();
+    const className = String(data.name || "").trim();
+
+    if (!classCode || !className) {
+      return {
+        success: false,
+        error: "Kode dan nama kelas wajib diisi.",
+      };
+    }
+
+    const isUpdate =
+      typeof data.id === "string" &&
+      data.id.length > 20;
+
     if (isUpdate) {
       const existing = await prisma.classroom.findFirst({
-        where: { id: data.id, teacherId: teacherProfile.id }
+        where: {
+          id: data.id,
+          teacherId: teacherProfile.id,
+        },
       });
-      if (!existing) return { error: "Kelas tidak ditemukan atau bukan milik Anda" };
-      
+
+      if (!existing) {
+        return {
+          success: false,
+          error: "Kelas tidak ditemukan atau bukan milik Anda.",
+        };
+      }
+
       await prisma.classroom.update({
-        where: { id: data.id },
+        where: {
+          id: data.id,
+        },
         data: {
-          classCode: data.code,
-          name: data.name
-        }
+          classCode,
+          name: className,
+        },
       });
     } else {
       const existingCode = await prisma.classroom.findUnique({
-        where: { classCode: data.code }
+        where: {
+          classCode,
+        },
       });
-      if (existingCode) return { error: "Kode kelas sudah digunakan, gunakan kode unik lain." };
-      
+
+      if (existingCode) {
+        return {
+          success: false,
+          error:
+            "Kode kelas sudah digunakan. Gunakan kode unik lain.",
+        };
+      }
+
       await prisma.classroom.create({
         data: {
-          classCode: data.code,
-          name: data.name,
-          teacherId: teacherProfile.id
-        }
+          classCode,
+          name: className,
+          teacherId: teacherProfile.id,
+        },
       });
     }
-    
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error saveClassroom:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
+
+// ============================================
+// HAPUS KELAS
+// ============================================
 
 export async function deleteClassroom(id) {
   try {
     const { teacherProfile } = await requireGuru();
-    
+
     const existing = await prisma.classroom.findFirst({
-      where: { id: id, teacherId: teacherProfile.id }
+      where: {
+        id,
+        teacherId: teacherProfile.id,
+      },
     });
-    if (!existing) return { error: "Kelas tidak ditemukan atau bukan milik Anda" };
-    
+
+    if (!existing) {
+      return {
+        success: false,
+        error: "Kelas tidak ditemukan atau bukan milik Anda.",
+      };
+    }
+
     await prisma.classroom.delete({
-      where: { id: id }
+      where: {
+        id,
+      },
     });
-    
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error deleteClassroom:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-// === SISWA ===
+// ============================================
+// DATA MASTER - SISWA
+// ============================================
+
 export async function getStudents() {
   try {
     const { teacherProfile } = await requireGuru();
-    
+
     const students = await prisma.studentProfile.findMany({
       where: {
-        classroom: { teacherId: teacherProfile.id }
+        classroom: {
+          teacherId: teacherProfile.id,
+        },
       },
       include: {
         user: true,
-        classroom: true
+        classroom: true,
       },
       orderBy: {
-        user: { createdAt: 'desc' }
-      }
+        user: {
+          createdAt: "desc",
+        },
+      },
     });
-    
-    const enriched = students.map(s => ({
-      id: s.id, 
+
+    const enriched = students.map((s) => ({
+      id: s.id,
       nis: s.nis || s.user.username,
       username: s.user.username,
       name: s.fullName,
       pob: s.birthPlace || "",
-      dob: s.birthDate ? s.birthDate.toISOString().split('T')[0] : "", // Gunakan format standar YYYY-MM-DD
+      dob: s.birthDate
+        ? s.birthDate.toISOString().split("T")[0]
+        : "",
       gender: s.gender || "L",
       classroomId: s.classroomId,
       className: s.classroom.name,
-      classCode: s.classroom.classCode
+      classCode: s.classroom.classCode,
     }));
-    
-    return { success: true, data: enriched };
+
+    return {
+      success: true,
+      data: enriched,
+    };
   } catch (error) {
     console.error("Error getStudents:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
+
+// ============================================
+// TAMBAH DAN EDIT SISWA
+// Username = NIS
+// Password awal = NIS
+// ============================================
 
 export async function saveStudent(data) {
   try {
-    console.log("saveStudent received data:", data);
     const { teacherProfile } = await requireGuru();
-    
-    // Cari kelas berdasarkan nama (karena UI pakai select name)
-    const classroom = await prisma.classroom.findFirst({
-      where: { name: data.className, teacherId: teacherProfile.id }
-    });
-    if (!classroom) {
-      return { error: `Kelas '${data.className}' tidak ditemukan untuk guru ini. (Pastikan Anda sudah membuat kelas tersebut)` };
+
+    const nis = String(data.nis || "").trim();
+    const name = String(data.name || "").trim();
+    const className = String(data.className || "").trim();
+
+    const gender = String(
+      data.gender || "L"
+    ).toUpperCase();
+
+    if (!/^[0-9A-Za-z_-]{3,30}$/.test(nis)) {
+      return {
+        success: false,
+        error:
+          "NIS harus terdiri dari 3–30 karakter " +
+          "berupa huruf, angka, _ atau -.",
+      };
     }
-    
+
+    if (!name || !className) {
+      return {
+        success: false,
+        error: "NIS, nama siswa, dan kelas wajib diisi.",
+      };
+    }
+
+    if (name.length > 150) {
+      return {
+        success: false,
+        error: "Nama siswa terlalu panjang.",
+      };
+    }
+
+    if (gender !== "L" && gender !== "P") {
+      return {
+        success: false,
+        error: "Jenis kelamin harus L atau P.",
+      };
+    }
+
+    const classroom = await prisma.classroom.findFirst({
+      where: {
+        name: className,
+        teacherId: teacherProfile.id,
+      },
+    });
+
+    if (!classroom) {
+      return {
+        success: false,
+        error:
+          `Kelas "${className}" tidak ditemukan. ` +
+          "Silakan buat kelas terlebih dahulu.",
+      };
+    }
+
     let parsedDob = null;
+
     if (data.dob) {
       const parsed = new Date(data.dob);
-      if (!isNaN(parsed.getTime())) parsedDob = parsed;
+
+      if (Number.isNaN(parsed.getTime())) {
+        return {
+          success: false,
+          error: "Tanggal lahir tidak valid.",
+        };
+      }
+
+      parsedDob = parsed;
     }
-    
-    const isUpdate = typeof data.id === 'string' && data.id.length > 20;
-    
+
+    const isUpdate =
+      typeof data.id === "string" &&
+      data.id.length > 20;
+
+    // ----------------------------------------
+    // EDIT SISWA
+    // ----------------------------------------
+
     if (isUpdate) {
-      const existing = await prisma.studentProfile.findUnique({
-        where: { id: data.id },
-        include: { user: true }
+      const existing = await prisma.studentProfile.findFirst({
+        where: {
+          id: data.id,
+          classroom: {
+            teacherId: teacherProfile.id,
+          },
+        },
+        include: {
+          user: true,
+        },
       });
-      if (!existing) return { error: "Data siswa tidak ditemukan" };
-      
-      // Update User Auth jika NIS diganti
-      if (existing.user.username !== data.nis) {
-         const existingUser = await prisma.user.findUnique({
-           where: { username: data.nis }
-         });
-         if (existingUser && existingUser.id !== existing.userId) {
-           return { error: "NIS sudah digunakan siswa lain." };
-         }
-         await prisma.user.update({
-           where: { id: existing.userId },
-           data: { username: data.nis, email: `${data.nis}@siswa.local` }
-         });
-      }
-      
-      // Update Profil Siswa
-      await prisma.studentProfile.update({
-        where: { id: data.id },
-        data: {
-          nis: data.nis,
-          fullName: data.name,
-          birthPlace: data.pob,
-          ...(parsedDob ? { birthDate: parsedDob } : {}),
-          gender: data.gender,
-          classroomId: classroom.id
-        }
-      });
-    } else {
-      // Create new student
-      if (teacherProfile.quota <= 0) {
-        return { error: "Kuota habis. Silakan beli kuota terlebih dahulu untuk menambah siswa." };
+
+      if (!existing) {
+        return {
+          success: false,
+          error: "Data siswa tidak ditemukan.",
+        };
       }
 
-      const existingUser = await prisma.user.findUnique({
-        where: { username: data.nis }
-      });
-      if (existingUser) return { error: "NIS sudah terdaftar." };
-      
-      const hashedPassword = await bcrypt.hash(data.nis, 10);
-      
-      await prisma.$transaction(async (tx) => {
-        const fresh = await tx.teacherProfile.findUnique({
-          where: { id: teacherProfile.id },
-          select: { quota: true }
+      if (existing.user.username !== nis) {
+        const existingUser = await prisma.user.findUnique({
+          where: {
+            username: nis,
+          },
         });
-        if (!fresh || fresh.quota <= 0) {
-          throw new Error("Kuota habis. Silakan beli kuota terlebih dahulu untuk menambah siswa.");
+
+        if (
+          existingUser &&
+          existingUser.id !== existing.userId
+        ) {
+          return {
+            success: false,
+            error: "NIS sudah digunakan siswa lain.",
+          };
         }
 
-        await tx.user.create({
+        // Mengganti NIS hanya mengubah username.
+        // Password lama tidak direset otomatis.
+        await prisma.user.update({
+          where: {
+            id: existing.userId,
+          },
           data: {
-            username: data.nis,
-            email: `${data.nis}@siswa.local`,
-            password: hashedPassword,
-            role: "SISWA",
-            studentProfile: {
-              create: {
-                fullName: data.name,
-                nis: data.nis,
-                gender: data.gender,
-                birthPlace: data.pob,
-                birthDate: parsedDob,
-                classroomId: classroom.id
-              }
-            }
-          }
+            username: nis,
+            email: `${nis}@siswa.local`,
+          },
         });
+      }
 
-        await tx.teacherProfile.update({
-          where: { id: teacherProfile.id },
-          data: { quota: { decrement: 1 } }
-        });
+      await prisma.studentProfile.update({
+        where: {
+          id: existing.id,
+        },
+        data: {
+          nis,
+          fullName: name,
+          birthPlace: data.pob || "",
+          birthDate: parsedDob,
+          gender,
+          classroomId: classroom.id,
+        },
       });
+
+      return {
+        success: true,
+        message: "Data siswa berhasil diperbarui.",
+      };
     }
-    
-    return { success: true };
+
+    // ----------------------------------------
+    // TAMBAH SISWA BARU
+    // ----------------------------------------
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          {
+            username: nis,
+          },
+          {
+            email: `${nis}@siswa.local`,
+          },
+        ],
+      },
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "NIS sudah terdaftar.",
+      };
+    }
+
+    const hashedPassword = await bcrypt.hash(nis, 10);
+
+    await prisma.$transaction(async (tx) => {
+      // Pengurangan kuota bersifat atomik.
+      const quotaUpdate = await tx.teacherProfile.updateMany({
+        where: {
+          id: teacherProfile.id,
+          quota: {
+            gte: 1,
+          },
+        },
+        data: {
+          quota: {
+            decrement: 1,
+          },
+        },
+      });
+
+      if (quotaUpdate.count !== 1) {
+        throw new Error(
+          "Kuota habis. Silakan beli kuota terlebih dahulu."
+        );
+      }
+
+      await tx.user.create({
+        data: {
+          username: nis,
+          email: `${nis}@siswa.local`,
+          password: hashedPassword,
+          role: "SISWA",
+
+          studentProfile: {
+            create: {
+              fullName: name,
+              nis,
+              gender,
+              birthPlace: data.pob || "",
+              birthDate: parsedDob,
+              classroomId: classroom.id,
+            },
+          },
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message:
+        "Siswa berhasil ditambahkan. " +
+        "Username dan password awal menggunakan NIS.",
+    };
   } catch (error) {
     console.error("Error saveStudent:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error:
+        error?.code === "P2002"
+          ? "NIS atau email sudah digunakan."
+          : error.message,
+    };
   }
 }
+
+// ============================================
+// HAPUS SISWA
+// ============================================
 
 export async function deleteStudent(id) {
   try {
     const { teacherProfile } = await requireGuru();
-    
+
     const student = await prisma.studentProfile.findFirst({
-      where: { 
-        id: id,
-        classroom: { teacherId: teacherProfile.id }
-      }
+      where: {
+        id,
+        classroom: {
+          teacherId: teacherProfile.id,
+        },
+      },
     });
-    
-    if (!student) return { error: "Siswa tidak ditemukan." };
-    
+
+    if (!student) {
+      return {
+        success: false,
+        error: "Siswa tidak ditemukan.",
+      };
+    }
+
     await prisma.user.delete({
-      where: { id: student.userId }
+      where: {
+        id: student.userId,
+      },
     });
-    
-    return { success: true };
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error("Error deleteStudent:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-// === SEKOLAH ===
+// ============================================
+// IMPORT SISWA MASSAL DARI EXCEL
+//
+// Data yang diterima dari halaman:
+// [
+//   {
+//     nis: "22004",
+//     name: "Widi Hartanto",
+//     className: "X IPA 1",
+//     gender: "L"
+//   }
+// ]
+//
+// Username = NIS
+// Password awal = NIS
+// ============================================
+
+export async function importStudentsExcel(rows) {
+  try {
+    const { teacherProfile } = await requireGuru();
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return {
+        success: false,
+        error: "File Excel tidak berisi data siswa.",
+      };
+    }
+
+    if (rows.length > 200) {
+      return {
+        success: false,
+        error:
+          "Maksimal 200 siswa dalam satu kali impor. " +
+          "Silakan bagi data menjadi beberapa file.",
+      };
+    }
+
+    // ----------------------------------------
+    // VALIDASI DATA
+    // ----------------------------------------
+
+    const students = rows.map((row, index) => {
+      if (!row || typeof row !== "object") {
+        throw new Error(
+          `Baris ${index + 2}: Format data tidak valid.`
+        );
+      }
+
+      const nis = String(row.nis ?? "").trim();
+      const name = String(row.name ?? "").trim();
+      const className = String(
+        row.className ?? ""
+      ).trim();
+
+      const gender = String(
+        row.gender ?? "L"
+      ).trim().toUpperCase();
+
+      if (!/^[0-9A-Za-z_-]{3,30}$/.test(nis)) {
+        throw new Error(
+          `Baris ${index + 2}: NIS tidak valid.`
+        );
+      }
+
+      if (!name || !className) {
+        throw new Error(
+          `Baris ${index + 2}: Nama dan kelas wajib diisi.`
+        );
+      }
+
+      if (name.length > 150 || className.length > 150) {
+        throw new Error(
+          `Baris ${index + 2}: Nama atau kelas terlalu panjang.`
+        );
+      }
+
+      if (gender !== "L" && gender !== "P") {
+        throw new Error(
+          `Baris ${index + 2}: Jenis kelamin harus L atau P.`
+        );
+      }
+
+      return {
+        nis,
+        name,
+        className,
+        gender,
+      };
+    });
+
+    // ----------------------------------------
+    // PERIKSA NIS DUPLIKAT DALAM FILE
+    // ----------------------------------------
+
+    const nisList = students.map((student) => student.nis);
+
+    if (new Set(nisList).size !== nisList.length) {
+      return {
+        success: false,
+        error: "Terdapat NIS duplikat dalam file Excel.",
+      };
+    }
+
+    // ----------------------------------------
+    // PERIKSA KELAS MILIK GURU
+    // ----------------------------------------
+
+    const classrooms = await prisma.classroom.findMany({
+      where: {
+        teacherId: teacherProfile.id,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const classMap = new Map();
+
+    for (const classroom of classrooms) {
+      const key = classroom.name.trim().toLowerCase();
+
+      // Hindari pemetaan ambigu bila guru mempunyai
+      // beberapa kelas dengan nama identik.
+      if (classMap.has(key)) {
+        return {
+          success: false,
+          error:
+            `Terdapat lebih dari satu kelas bernama ` +
+            `"${classroom.name}". Gunakan nama kelas unik.`,
+        };
+      }
+
+      classMap.set(key, classroom.id);
+    }
+
+    for (const student of students) {
+      const key = student.className.toLowerCase();
+
+      if (!classMap.has(key)) {
+        return {
+          success: false,
+          error:
+            `Kelas "${student.className}" belum terdaftar. ` +
+            "Buat kelas tersebut terlebih dahulu.",
+        };
+      }
+    }
+
+    // ----------------------------------------
+    // PERIKSA NIS SUDAH TERDAFTAR
+    // ----------------------------------------
+
+    const existingUsers = await prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            username: {
+              in: nisList,
+            },
+          },
+          {
+            email: {
+              in: nisList.map(
+                (nis) => `${nis}@siswa.local`
+              ),
+            },
+          },
+        ],
+      },
+      select: {
+        username: true,
+      },
+    });
+
+    if (existingUsers.length > 0) {
+      return {
+        success: false,
+        error:
+          "NIS berikut sudah terdaftar: " +
+          existingUsers.map((u) => u.username).join(", "),
+      };
+    }
+
+    // ----------------------------------------
+    // SIAPKAN PASSWORD HASH
+    // ----------------------------------------
+
+    const prepared = await Promise.all(
+      students.map(async (student) => ({
+        ...student,
+        classroomId: classMap.get(
+          student.className.toLowerCase()
+        ),
+        hashedPassword: await bcrypt.hash(
+          student.nis,
+          10
+        ),
+      }))
+    );
+
+    // ----------------------------------------
+    // TRANSAKSI DATABASE
+    // Semua berhasil atau semua dibatalkan
+    // ----------------------------------------
+
+    await prisma.$transaction(
+      async (tx) => {
+        const quotaUpdate =
+          await tx.teacherProfile.updateMany({
+            where: {
+              id: teacherProfile.id,
+              quota: {
+                gte: prepared.length,
+              },
+            },
+            data: {
+              quota: {
+                decrement: prepared.length,
+              },
+            },
+          });
+
+        if (quotaUpdate.count !== 1) {
+          throw new Error(
+            `Kuota tidak cukup untuk mengimpor ` +
+            `${prepared.length} siswa.`
+          );
+        }
+
+        for (const student of prepared) {
+          await tx.user.create({
+            data: {
+              username: student.nis,
+              email: `${student.nis}@siswa.local`,
+              password: student.hashedPassword,
+              role: "SISWA",
+
+              studentProfile: {
+                create: {
+                  nis: student.nis,
+                  fullName: student.name,
+                  gender: student.gender,
+                  birthPlace: "",
+                  birthDate: null,
+                  classroomId: student.classroomId,
+                },
+              },
+            },
+          });
+        }
+      },
+      {
+        maxWait: 10000,
+        timeout: 60000,
+      }
+    );
+
+    return {
+      success: true,
+      imported: prepared.length,
+      message:
+        `${prepared.length} siswa berhasil diimpor. ` +
+        "Username dan password awal menggunakan NIS.",
+    };
+  } catch (error) {
+    console.error("Error importStudentsExcel:", error);
+
+    return {
+      success: false,
+      error:
+        error?.code === "P2002"
+          ? "NIS atau email sudah terdaftar."
+          : error?.message ||
+            "Terjadi kesalahan ketika mengimpor siswa.",
+    };
+  }
+}
+
+// ============================================
+// DATA MASTER - SEKOLAH
+// ============================================
+
 export async function getSchoolProfile() {
   try {
     const { teacherProfile } = await requireGuru();
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: {
         name: teacherProfile.schoolName || "",
         npsn: teacherProfile.schoolCode || "",
@@ -310,44 +882,90 @@ export async function getSchoolProfile() {
         province: "",
         regency: "",
         aliasCity: "",
-        logo: null
-      }
+        logo: null,
+      },
     };
-  } catch(error) {
-    return { error: error.message };
+  } catch (error) {
+    console.error("Error getSchoolProfile:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
+
+// ============================================
+// SIMPAN PROFIL SEKOLAH
+// ============================================
 
 export async function saveSchoolProfile(data) {
   try {
     const { teacherProfile } = await requireGuru();
+
     await prisma.teacherProfile.update({
-      where: { id: teacherProfile.id },
+      where: {
+        id: teacherProfile.id,
+      },
       data: {
         schoolName: data.name,
-        schoolCode: data.npsn || null
-      }
+        schoolCode: data.npsn || null,
+      },
     });
-    return { success: true };
-  } catch(error) {
-    return { error: error.message };
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error saveSchoolProfile:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-// === TRANSAKSI ===
+// ============================================
+// TRANSAKSI
+// Fungsi lama dipertahankan
+// ============================================
+
 export async function getTransactions() {
   try {
     const { db, user } = await requireGuruMock();
-    const tx = (db.transactions || []).filter(t => t.teacherId === user.id);
-    return { success: true, data: tx.reverse() };
-  } catch(error) {
-    return { error: error.message };
+
+    const transactions = (db.transactions || [])
+      .filter((t) => t.teacherId === user.id)
+      .reverse();
+
+    return {
+      success: true,
+      data: transactions,
+    };
+  } catch (error) {
+    console.error("Error getTransactions:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-export async function createTransaction(amount, items, method) {
+// ============================================
+// BUAT TRANSAKSI
+// Fungsi lama dipertahankan
+// ============================================
+
+export async function createTransaction(
+  amount,
+  items,
+  method
+) {
   try {
     const { db, user } = await requireGuruMock();
+
     const newTx = {
       id: "INV-" + Date.now(),
       teacherId: user.id,
@@ -357,16 +975,33 @@ export async function createTransaction(amount, items, method) {
       method,
       status: "Menunggu Pembayaran",
     };
-    if (!db.transactions) db.transactions = [];
+
+    if (!db.transactions) {
+      db.transactions = [];
+    }
+
     db.transactions.push(newTx);
+
     saveDB(db);
-    return { success: true, data: newTx };
-  } catch(error) {
-    return { error: error.message };
+
+    return {
+      success: true,
+      data: newTx,
+    };
+  } catch (error) {
+    console.error("Error createTransaction:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-// === HASIL TES ===
+// ============================================
+// HASIL TES SISWA
+// ============================================
+
 export async function getResults() {
   try {
     const { teacherProfile } = await requireGuru();
@@ -374,31 +1009,41 @@ export async function getResults() {
     const results = await prisma.riasecResult.findMany({
       where: {
         student: {
-          classroom: { teacherId: teacherProfile.id }
-        }
+          classroom: {
+            teacherId: teacherProfile.id,
+          },
+        },
       },
       include: {
         student: {
           include: {
             user: true,
-            classroom: true
-          }
-        }
+            classroom: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
-    const enriched = results.map(r => {
+    const enriched = results.map((r) => {
       let parsedScores = {};
+
       try {
-        parsedScores = typeof r.rawScores === "string" ? JSON.parse(r.rawScores || "{}") : (r.rawScores || {});
-      } catch (e) {
+        parsedScores =
+          typeof r.rawScores === "string"
+            ? JSON.parse(r.rawScores || "{}")
+            : r.rawScores || {};
+      } catch {
         parsedScores = {};
       }
 
       return {
         id: r.id,
-        nis: r.student.nis || r.student.user.username,
+        nis:
+          r.student.nis ||
+          r.student.user.username,
         name: r.student.fullName,
         className: r.student.classroom.name,
         testType: "RIASEC",
@@ -406,22 +1051,32 @@ export async function getResults() {
         createdAt: r.createdAt.toISOString(),
         result: r.dominantCode || "-",
         dominantCode: r.dominantCode || "-",
-        // score tetap r.rawScores agar halaman tabulasi tidak rusak
         score: r.rawScores || "{}",
         rawScores: parsedScores,
         consistency: r.consistency || "-",
         status: "Selesai",
-        color: "bg-blue-100 text-blue-700 border-blue-200"
+        color:
+          "bg-blue-100 text-blue-700 border-blue-200",
       };
     });
 
-    return { success: true, data: enriched };
-  } catch(error) {
+    return {
+      success: true,
+      data: enriched,
+    };
+  } catch (error) {
     console.error("Error getResults:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
+// ============================================
+// HASIL TES DETAIL
+// ============================================
 
 export async function getDetailedResults() {
   try {
@@ -430,102 +1085,126 @@ export async function getDetailedResults() {
     const results = await prisma.riasecResult.findMany({
       where: {
         student: {
-          classroom: { teacherId: teacherProfile.id }
-        }
+          classroom: {
+            teacherId: teacherProfile.id,
+          },
+        },
       },
       include: {
         student: {
           include: {
             user: true,
-            classroom: true
-          }
-        }
+            classroom: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
-    const detailed = results.map(r => {
+    const detailed = results.map((r) => {
       let parsedScores = {};
+
       try {
-        parsedScores = typeof r.rawScores === "string" ? JSON.parse(r.rawScores || "{}") : (r.rawScores || {});
-      } catch (e) {
+        parsedScores =
+          typeof r.rawScores === "string"
+            ? JSON.parse(r.rawScores || "{}")
+            : r.rawScores || {};
+      } catch {
         parsedScores = {};
       }
 
       return {
         id: r.id,
-        nis: r.student.nis || r.student.user.username,
+        nis:
+          r.student.nis ||
+          r.student.user.username,
         name: r.student.fullName,
         className: r.student.classroom.name,
         dominantCode: r.dominantCode || "-",
         rawScores: parsedScores,
         consistency: r.consistency || "-",
-        date: r.createdAt.toISOString()
+        date: r.createdAt.toISOString(),
       };
     });
 
-    return { success: true, data: detailed };
-  } catch(error) {
+    return {
+      success: true,
+      data: detailed,
+    };
+  } catch (error) {
     console.error("Error getDetailedResults:", error);
-    return { error: error.message };
+
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
 
-
- 
 // ============================================
 // TABULASI JAWABAN SISWA RIASEC
+//
+// 216 jawaban utama
+// 12 nilai Self-Estimate
 // ============================================
 
 export async function getTabulasiAnswers() {
   try {
     const { teacherProfile } = await requireGuru();
 
-    const [questions, estimates, results] = await Promise.all([
-      prisma.riasecQuestion.findMany({
-        select: {
-          id: true,
-        },
-        orderBy: {
-          id: "asc",
-        },
-      }),
+    const [questions, estimates, results] =
+      await Promise.all([
+        prisma.riasecQuestion.findMany({
+          select: {
+            id: true,
+          },
+          orderBy: {
+            id: "asc",
+          },
+        }),
 
-      prisma.riasecSelfEstimate.findMany({
-        select: {
-          id: true,
-        },
-        orderBy: {
-          id: "asc",
-        },
-      }),
+        prisma.riasecSelfEstimate.findMany({
+          select: {
+            id: true,
+          },
+          orderBy: {
+            id: "asc",
+          },
+        }),
 
-      prisma.riasecResult.findMany({
-        where: {
-          student: {
-            classroom: {
-              teacherId: teacherProfile.id,
+        prisma.riasecResult.findMany({
+          where: {
+            student: {
+              classroom: {
+                teacherId: teacherProfile.id,
+              },
             },
           },
-        },
-
-        include: {
-          student: {
-            include: {
-              user: true,
-              classroom: true,
+          include: {
+            student: {
+              include: {
+                user: true,
+                classroom: true,
+              },
             },
           },
-        },
+          orderBy: [
+            {
+              createdAt: "desc",
+            },
+            {
+              id: "desc",
+            },
+          ],
+        }),
+      ]);
 
-        orderBy: [
-          { createdAt: "desc" },
-          { id: "desc" },
-        ],
-      }),
-    ]);
+    // ----------------------------------------
+    // AMBIL HASIL TERBARU PER SISWA
+    // ----------------------------------------
 
-    // Ambil hasil terbaru untuk setiap siswa
     const latestResults = new Map();
 
     for (const result of results) {
@@ -545,13 +1224,16 @@ export async function getTabulasiAnswers() {
         name: result.student.fullName,
 
         classId: result.student.classroomId,
-        className: result.student.classroom.name,
+
+        className:
+          result.student.classroom.name,
 
         // Jawaban asli 216 soal
         answers: result.answers ?? null,
 
         // Nilai asli 12 Self-Estimate
-        selfEstimates: result.selfEstimates ?? null,
+        selfEstimates:
+          result.selfEstimates ?? null,
 
         date: result.createdAt.toISOString(),
       });
@@ -560,18 +1242,29 @@ export async function getTabulasiAnswers() {
     return {
       success: true,
       data: {
-        questionIds: questions.map((q) => q.id),
-        estimateIds: estimates.map((e) => e.id),
-        students: Array.from(latestResults.values()),
+        questionIds: questions.map(
+          (question) => question.id
+        ),
+
+        estimateIds: estimates.map(
+          (estimate) => estimate.id
+        ),
+
+        students: Array.from(
+          latestResults.values()
+        ),
       },
     };
   } catch (error) {
-    console.error("Error getTabulasiAnswers:", error);
+    console.error(
+      "Error getTabulasiAnswers:",
+      error
+    );
 
     return {
       success: false,
-      error: "Gagal mengambil data tabulasi siswa.",
+      error:
+        "Gagal mengambil data tabulasi siswa.",
     };
   }
 }
-

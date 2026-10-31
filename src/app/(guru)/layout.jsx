@@ -1,9 +1,12 @@
+
 "use client";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
+
 import {
   LayoutDashboard,
   Menu,
@@ -13,7 +16,6 @@ import {
   School,
   X,
   Database,
-  GraduationCap,
   FileBarChart,
   Table,
   FileText,
@@ -22,55 +24,105 @@ import {
   User,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
 } from "lucide-react";
+
+// ============================================
+// LAYOUT PANEL GURU CARE INDONESIA
+// ============================================
 
 export default function GuruLayout({ children }) {
   const { data: session } = useSession();
+
   const userName = session?.user?.name || "Memuat...";
-  const roleName = session?.user?.role === "GURU" ? "Guru BK" : "Admin";
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // State untuk menyimpan menu mana yang sedang dibuka (misal: 'analisis')
-  const [openSubMenu, setOpenSubMenu] = useState(null);
+  const roleName =
+    session?.user?.role === "GURU" ? "Guru BK" : "Admin";
 
   const pathname = usePathname();
 
-  // === 1. DATA NAVIGASI (Dikelompokkan) ===
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [openSubMenu, setOpenSubMenu] = useState(null);
+
+  // ============================================
+  // DATA NAVIGASI PANEL GURU
+  // ============================================
+
   const navGroups = [
     {
       groupLabel: "Main",
       items: [
-        { name: "Dashboard", href: "/guru/dashboard", icon: LayoutDashboard },
+        {
+          name: "Dashboard",
+          href: "/guru/dashboard",
+          icon: LayoutDashboard,
+        },
       ],
     },
+
     {
       groupLabel: "Data Master",
       items: [
-        { name: "Kelas", href: "/guru/kelas", icon: School },
-        { name: "Siswa", href: "/guru/siswa", icon: Users },
+        {
+          name: "Kelas",
+          href: "/guru/kelas",
+          icon: School,
+        },
+        {
+          name: "Siswa",
+          href: "/guru/siswa",
+          icon: Users,
+        },
       ],
     },
+
     {
       groupLabel: "Hasil Bakat Minat",
       items: [
         {
           name: "Analisis Bakat Minat",
-          id: "analisis", // ID unik untuk logika buka tutup
+          id: "analisis",
           icon: FileBarChart,
-          // Ini adalah Sub-Menu (Anak)
+
           subItems: [
-            { name: "Hasil Tes Siswa", href: "/guru/analisis/hasil-tes" },
-            { name: "Profil Kelompok", href: "/guru/analisis/kelompok" },
-            { name: "Data Siswa", href: "/guru/analisis/data-siswa" },
+            {
+              name: "Hasil Tes Siswa",
+              href: "/guru/analisis/hasil-tes",
+            },
+            {
+              name: "Profil Kelompok",
+              href: "/guru/analisis/kelompok",
+            },
+            {
+              name: "Data Siswa",
+              href: "/guru/analisis/data-siswa",
+            },
           ],
         },
-        { name: "Tabulasi Pilihan", href: "/guru/tabulasi", icon: Table },
-        { name: "Cover Laporan", href: "/guru/cover", icon: FileText },
+
+        {
+          name: "Tabulasi Pilihan",
+          href: "/guru/tabulasi",
+          icon: Table,
+        },
+
+        {
+          name: "Cover Laporan",
+          href: "/guru/cover",
+          icon: FileText,
+        },
+
+        // ====================================
+        // MENU BARU: LAPORAN LENGKAP
+        // ====================================
+        {
+          name: "Laporan Lengkap",
+          href: "/guru/laporan-lengkap",
+          icon: FileBarChart,
+        },
       ],
     },
+
     {
       groupLabel: "Transaksi",
       items: [
@@ -79,19 +131,35 @@ export default function GuruLayout({ children }) {
           href: "/guru/beli-kuota",
           icon: ShoppingCart,
         },
-        { name: "Daftar Transaksi", href: "/guru/transaksi", icon: Receipt },
+        {
+          name: "Daftar Transaksi",
+          href: "/guru/transaksi",
+          icon: Receipt,
+        },
       ],
     },
+
     {
       groupLabel: "Profil",
       items: [
-        { name: "Profil Saya", href: "/guru/profil", icon: User },
-        { name: "Sekolah", href: "/guru/sekolah", icon: Database },
+        {
+          name: "Profil Saya",
+          href: "/guru/profil",
+          icon: User,
+        },
+        {
+          name: "Sekolah",
+          href: "/guru/sekolah",
+          icon: Database,
+        },
       ],
     },
   ];
 
-  // === 2. LOGIKA RESIZE LAYAR ===
+  // ============================================
+  // RESPONSIVE SIDEBAR
+  // ============================================
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -102,10 +170,19 @@ export default function GuruLayout({ children }) {
         setIsSidebarOpen(true);
       }
     };
+
     handleResize();
+
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
+
+  // ============================================
+  // BUKA SUBMENU OTOMATIS
+  // ============================================
 
   useEffect(() => {
     if (pathname?.startsWith("/guru/analisis")) {
@@ -113,21 +190,32 @@ export default function GuruLayout({ children }) {
     }
   }, [pathname]);
 
-  // Fungsi toggle sub-menu
+  // ============================================
+  // TOGGLE SUBMENU
+  // ============================================
+
   const handleSubMenuClick = (menuId) => {
-    // Jika sidebar sedang tertutup, buka dulu sidebarnya biar kelihatan anaknya
     if (!isSidebarOpen) {
       setIsSidebarOpen(true);
       setOpenSubMenu(menuId);
     } else {
-      // Toggle buka tutup biasa
-      setOpenSubMenu(openSubMenu === menuId ? null : menuId);
+      setOpenSubMenu(
+        openSubMenu === menuId ? null : menuId
+      );
     }
   };
 
+  // ============================================
+  // RENDER LAYOUT
+  // ============================================
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* === SIDEBAR === */}
+
+      {/* ====================================
+          SIDEBAR
+      ==================================== */}
+
       <motion.aside
         initial={false}
         animate={{
@@ -140,50 +228,81 @@ export default function GuruLayout({ children }) {
             : "80px",
         }}
         className={`bg-white border-r border-gray-200 flex flex-col z-40 transition-all duration-300
-          ${isMobile ? "fixed inset-0" : "relative"} 
-          ${isMobile && !isSidebarOpen ? "hidden" : "flex"}
+          ${isMobile ? "fixed inset-0" : "relative"}
+          ${
+            isMobile && !isSidebarOpen
+              ? "hidden"
+              : "flex"
+          }
         `}
       >
-        {/* Header Sidebar */}
+
+        {/* HEADER SIDEBAR */}
+
         <div className="h-16 flex items-center px-6 border-b border-gray-100 shrink-0">
           {isSidebarOpen || isMobile ? (
             <span className="font-bold text-xl text-blue-600 tracking-tight flex-1">
-              Guru<span className="text-gray-900">Panel</span>
+              Guru
+              <span className="text-gray-900">
+                Panel
+              </span>
             </span>
           ) : (
-            <span className="font-bold text-xl text-blue-600 mx-auto">G</span>
+            <span className="font-bold text-xl text-blue-600 mx-auto">
+              G
+            </span>
           )}
+
           {isMobile && (
-            <button onClick={() => setIsSidebarOpen(false)}>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-label="Tutup sidebar"
+            >
               <X className="text-gray-500" />
             </button>
           )}
         </div>
 
-        {/* Menu Items (Scrollable) */}
+        {/* ====================================
+            MENU NAVIGASI
+        ==================================== */}
+
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-6 scrollbar-hide">
           {navGroups.map((group, groupIndex) => (
             <div key={groupIndex}>
-              {/* Judul Group (Hanya muncul kalau Sidebar Terbuka) */}
+
+              {/* JUDUL GROUP */}
+
               {(isSidebarOpen || isMobile) && (
                 <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                   {group.groupLabel}
                 </p>
               )}
 
-              {/* Loop Item dalam Group */}
               <ul className="space-y-1">
                 {group.items.map((item, itemIndex) => {
-                  const isActive = pathname === item.href;
-                  const hasSubItems = !!item.subItems; // Cek apakah punya anak?
-                  const isSubMenuOpen = openSubMenu === item.id;
+                  const isActive =
+                    pathname === item.href;
 
-                  // --- RENDER ITEM YANG PUNYA SUB-MENU ---
+                  const hasSubItems =
+                    !!item.subItems;
+
+                  const isSubMenuOpen =
+                    openSubMenu === item.id;
+
+                  // ====================================
+                  // MENU DENGAN SUBMENU
+                  // ====================================
+
                   if (hasSubItems) {
                     return (
                       <li key={itemIndex}>
                         <button
-                          onClick={() => handleSubMenuClick(item.id)}
+                          type="button"
+                          onClick={() =>
+                            handleSubMenuClick(item.id)
+                          }
                           className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group
                             ${
                               isSubMenuOpen
@@ -206,6 +325,7 @@ export default function GuruLayout({ children }) {
                                   : "text-gray-400 group-hover:text-blue-600"
                               }
                             />
+
                             {(isSidebarOpen || isMobile) && (
                               <span className="font-medium text-sm">
                                 {item.name}
@@ -213,7 +333,6 @@ export default function GuruLayout({ children }) {
                             )}
                           </div>
 
-                          {/* Panah Kecil (Chevron) */}
                           {(isSidebarOpen || isMobile) &&
                             (isSubMenuOpen ? (
                               <ChevronDown size={16} />
@@ -222,42 +341,60 @@ export default function GuruLayout({ children }) {
                             ))}
                         </button>
 
-                        {/* Area Anak Sub-Menu */}
+                        {/* SUBMENU */}
+
                         <AnimatePresence>
-                          {isSubMenuOpen && (isSidebarOpen || isMobile) && (
-                            <motion.ul
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              className="overflow-hidden pl-11 pr-2 space-y-1 pt-1"
-                            >
-                              {item.subItems.map((sub, subIndex) => {
-                                const isSubActive = pathname === sub.href;
-                                return (
-                                  <li key={subIndex}>
-                                    <Link
-                                      href={sub.href}
-                                      className={`block py-2 px-3 rounded-lg text-sm transition-colors
-                                        ${
-                                          isSubActive
-                                            ? "bg-blue-50 text-blue-600 font-medium"
-                                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                                        }
-                                      `}
-                                    >
-                                      {sub.name}
-                                    </Link>
-                                  </li>
-                                );
-                              })}
-                            </motion.ul>
-                          )}
+                          {isSubMenuOpen &&
+                            (isSidebarOpen || isMobile) && (
+                              <motion.ul
+                                initial={{
+                                  height: 0,
+                                  opacity: 0,
+                                }}
+                                animate={{
+                                  height: "auto",
+                                  opacity: 1,
+                                }}
+                                exit={{
+                                  height: 0,
+                                  opacity: 0,
+                                }}
+                                className="overflow-hidden pl-11 pr-2 space-y-1 pt-1"
+                              >
+                                {item.subItems.map(
+                                  (sub, subIndex) => {
+                                    const isSubActive =
+                                      pathname === sub.href;
+
+                                    return (
+                                      <li key={subIndex}>
+                                        <Link
+                                          href={sub.href}
+                                          className={`block py-2 px-3 rounded-lg text-sm transition-colors
+                                            ${
+                                              isSubActive
+                                                ? "bg-blue-50 text-blue-600 font-medium"
+                                                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                                            }
+                                          `}
+                                        >
+                                          {sub.name}
+                                        </Link>
+                                      </li>
+                                    );
+                                  }
+                                )}
+                              </motion.ul>
+                            )}
                         </AnimatePresence>
                       </li>
                     );
                   }
 
-                  // --- RENDER ITEM BIASA (TANPA SUB-MENU) ---
+                  // ====================================
+                  // MENU BIASA
+                  // ====================================
+
                   return (
                     <li key={itemIndex}>
                       <Link
@@ -299,7 +436,8 @@ export default function GuruLayout({ children }) {
                 })}
               </ul>
 
-              {/* Garis Pemisah antar Group (Kecuali group terakhir) */}
+              {/* PEMISAH GROUP */}
+
               {groupIndex !== navGroups.length - 1 &&
                 (isSidebarOpen || isMobile) && (
                   <div className="my-4 border-t border-gray-100 mx-3" />
@@ -308,28 +446,52 @@ export default function GuruLayout({ children }) {
           ))}
         </nav>
 
-        {/* Footer Sidebar */}
+        {/* ====================================
+            FOOTER - LOGOUT
+        ==================================== */}
+
         <div className="p-4 border-t border-gray-100 shrink-0">
           <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            type="button"
+            onClick={() =>
+              signOut({
+                callbackUrl: "/login",
+              })
+            }
             className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
-             ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
-          `}
+              ${
+                !isSidebarOpen && !isMobile
+                  ? "justify-center"
+                  : "gap-3"
+              }
+            `}
           >
             <LogOut size={22} />
+
             {(isSidebarOpen || isMobile) && (
-              <span className="font-medium text-sm">Keluar Akun</span>
+              <span className="font-medium text-sm">
+                Keluar Akun
+              </span>
             )}
           </button>
         </div>
       </motion.aside>
 
-      {/* === KONTEN UTAMA === */}
+      {/* ====================================
+          KONTEN UTAMA
+      ==================================== */}
+
       <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-gray-50">
-        {/* Header Atas */}
+
+        {/* HEADER ATAS */}
+
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-30 shrink-0">
           <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            type="button"
+            onClick={() =>
+              setIsSidebarOpen(!isSidebarOpen)
+            }
+            aria-label="Buka atau tutup sidebar"
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 focus:outline-none"
           >
             <Menu size={24} />
@@ -340,8 +502,12 @@ export default function GuruLayout({ children }) {
               <p className="text-sm font-bold text-gray-900">
                 {userName}
               </p>
-              <p className="text-xs text-gray-500">{roleName}</p>
+
+              <p className="text-xs text-gray-500">
+                {roleName}
+              </p>
             </div>
+
             <Link href="/guru/profil">
               <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-600 border border-gray-200">
                 <UserCircle size={24} />
@@ -350,7 +516,8 @@ export default function GuruLayout({ children }) {
           </div>
         </header>
 
-        {/* Area Isi Halaman */}
+        {/* ISI HALAMAN */}
+
         <main className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
           {children}
         </main>

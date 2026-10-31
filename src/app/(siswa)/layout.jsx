@@ -1,156 +1,387 @@
+
 "use client";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { motion } from "framer-motion";
-import { 
-  LayoutDashboard, 
-  Menu, 
-  UserCircle, 
-  LogOut, 
+
+import {
+  LayoutDashboard,
+  Menu,
+  UserCircle,
+  LogOut,
   X,
   Sparkles,
   ClipboardList,
-  Trophy, 
+  Trophy,
+  ChevronDown,
 } from "lucide-react";
 
 export default function SiswaLayout({ children }) {
   const { data: session } = useSession();
-  // --- STATE & LOGIC (Sama persis dengan Guru) ---
+  const pathname = usePathname();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const pathname = usePathname();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const userName = session?.user?.name || "Siswa";
+
+  // ============================================
+  // RESPONSIVE SIDEBAR
+  // ============================================
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setIsMobile(true);
-        setIsSidebarOpen(false);
-      } else {
-        setIsMobile(false);
-        setIsSidebarOpen(true);
-      }
+      const mobile = window.innerWidth < 768;
+
+      setIsMobile(mobile);
+      setIsSidebarOpen(!mobile);
     };
+
     handleResize();
+
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
-  // --- MENU NAVIGASI SISWA ---
+  // ============================================
+  // TUTUP MENU SETELAH BERPINDAH HALAMAN
+  // ============================================
+
+  useEffect(() => {
+    setIsProfileOpen(false);
+
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, [pathname]);
+
+  // ============================================
+  // FUNGSI LOGOUT
+  // ============================================
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    setIsProfileOpen(false);
+
+    try {
+      await signOut({
+        callbackUrl: "/login",
+        redirect: true,
+      });
+    } catch (error) {
+      console.error("Gagal logout:", error);
+      setIsLoggingOut(false);
+      alert("Gagal keluar akun. Silakan coba lagi.");
+    }
+  };
+
+  // ============================================
+  // MENU NAVIGASI SISWA
+  // ============================================
+
   const navItems = [
-    { name: "Dashboard", href: "/siswa/dashboard", icon: LayoutDashboard },
-    { name: "Tes RIASEC", href: "/siswa/tes-riasec", icon: ClipboardList },
-    { name: "Hasil Tes", href: "/siswa/hasil-riasec", icon: Trophy },
+    {
+      name: "Dashboard",
+      href: "/siswa/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      name: "Tes RIASEC",
+      href: "/siswa/tes-riasec",
+      icon: ClipboardList,
+    },
+    {
+      name: "Hasil Tes",
+      href: "/siswa/hasil-riasec",
+      icon: Trophy,
+    },
   ];
 
+  // ============================================
+  // TAMPILAN LAYOUT
+  // ============================================
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      
-      {/* === SIDEBAR === */}
+    <div className="flex h-screen w-full overflow-hidden bg-[#f3f6ff]">
+
+      {/* OVERLAY MOBILE */}
+
+      {isMobile && isSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Tutup menu navigasi"
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40"
+        />
+      )}
+
+      {/* SIDEBAR */}
+
       <motion.aside
         initial={false}
-        animate={{ 
-          width: isMobile ? (isSidebarOpen ? "50%" : "0px") : (isSidebarOpen ? "260px" : "80px") 
+        animate={{
+          width: isMobile
+            ? isSidebarOpen
+              ? "min(85vw, 280px)"
+              : "0px"
+            : isSidebarOpen
+            ? "260px"
+            : "80px",
         }}
-        className={`bg-white border-r border-gray-200 flex flex-col z-40 transition-all duration-300
-          ${isMobile ? "fixed inset-0" : "relative"} 
-          ${isMobile && !isSidebarOpen ? "hidden" : "flex"}
-        `}
+        transition={{
+          duration: 0.2,
+        }}
+        className={`flex h-full shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white shadow-sm ${
+          isMobile
+            ? "fixed inset-y-0 left-0 z-50"
+            : "relative z-20"
+        }`}
       >
-        {/* Header Sidebar */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 shrink-0">
-          {(isSidebarOpen || isMobile) ? (
-            <div className="flex items-center gap-2 text-xl font-bold text-gray-900 tracking-tight">
-               <Sparkles className="text-blue-600" size={20} />
-               <span>Siswa<span className="text-blue-600">Panel</span></span>
+
+        {/* HEADER SIDEBAR */}
+
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-gray-100 px-5">
+
+          {isSidebarOpen ? (
+            <div className="flex items-center gap-2 whitespace-nowrap text-xl font-bold tracking-tight text-gray-900">
+              <Sparkles
+                className="text-blue-600"
+                size={22}
+              />
+
+              <span>
+                Siswa
+                <span className="text-blue-600">
+                  Panel
+                </span>
+              </span>
             </div>
           ) : (
-            <Sparkles className="text-blue-600 mx-auto" size={24} />
+            <Sparkles
+              className="mx-auto text-blue-600"
+              size={25}
+            />
           )}
 
           {isMobile && (
-            <button onClick={() => setIsSidebarOpen(false)}>
-              <X className="text-gray-500" />
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-label="Tutup sidebar"
+              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
+            >
+              <X size={22} />
             </button>
           )}
         </div>
 
-        {/* Menu Items */}
-        <nav className="flex-1 py-6 px-3 space-y-2">
+        {/* NAVIGASI */}
+
+        <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-6">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              pathname.startsWith(item.href + "/");
+
+            const Icon = item.icon;
+
             return (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
-                className={`flex items-center p-3 rounded-xl transition-all duration-200 group
-                  ${isActive 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                title={
+                  !isSidebarOpen
+                    ? item.name
+                    : undefined
+                }
+                onClick={() => {
+                  if (isMobile) {
+                    setIsSidebarOpen(false);
                   }
-                  ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
-                `}
+                }}
+                className={`group flex items-center rounded-xl p-3 transition-all duration-200 ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                    : "text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                } ${
+                  isSidebarOpen
+                    ? "gap-3"
+                    : "justify-center"
+                }`}
               >
-                <item.icon size={22} className={isActive ? "text-white" : "text-gray-400 group-hover:text-gray-900"} />
-                
-                {(isSidebarOpen || isMobile) && (
-                  <motion.span 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="font-medium whitespace-nowrap"
-                  >
+                <Icon
+                  size={22}
+                  className={`shrink-0 ${
+                    isActive
+                      ? "text-white"
+                      : "text-gray-400 group-hover:text-blue-600"
+                  }`}
+                />
+
+                {isSidebarOpen && (
+                  <span className="whitespace-nowrap text-sm font-semibold">
                     {item.name}
-                  </motion.span>
+                  </span>
                 )}
               </Link>
-            )
+            );
           })}
         </nav>
 
-        {/* Footer Sidebar (Logout) */}
-        <div className="p-4 border-t border-gray-100 shrink-0">
-          <button 
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className={`flex items-center w-full p-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors
-             ${!isSidebarOpen && !isMobile ? "justify-center" : "gap-3"}
-          `}>
-            <LogOut size={22} />
-            {(isSidebarOpen || isMobile) && <span className="font-medium">Keluar</span>}
+        {/* LOGOUT SIDEBAR */}
+
+        <div className="shrink-0 border-t border-gray-100 p-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            title={
+              !isSidebarOpen
+                ? "Keluar Akun"
+                : undefined
+            }
+            className={`flex w-full items-center rounded-xl p-3 text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 ${
+              isSidebarOpen
+                ? "gap-3"
+                : "justify-center"
+            }`}
+          >
+            <LogOut
+              size={22}
+              className="shrink-0"
+            />
+
+            {isSidebarOpen && (
+              <span className="whitespace-nowrap text-sm font-semibold">
+                {isLoggingOut
+                  ? "Sedang Keluar..."
+                  : "Keluar Akun"}
+              </span>
+            )}
           </button>
         </div>
       </motion.aside>
 
+      {/* KONTEN UTAMA */}
 
-      {/* === KONTEN UTAMA === */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* Header Atas */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 z-30 shrink-0">
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+      <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+
+        {/* HEADER ATAS */}
+
+        <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6">
+
+          {/* TOGGLE SIDEBAR */}
+
+          <button
+            type="button"
+            onClick={() =>
+              setIsSidebarOpen((prev) => !prev)
+            }
+            aria-label={
+              isSidebarOpen
+                ? "Tutup menu navigasi"
+                : "Buka menu navigasi"
+            }
+            className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100"
           >
             <Menu size={24} />
           </button>
 
-          {/* Profil Siswa */}
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-900">{session?.user?.name || "Siswa"}</p>
-              <p className="text-xs text-gray-500">Siswa Aktif</p>
-            </div>
-            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 border border-blue-100">
-              <UserCircle size={28} />
-            </div>
+          {/* PROFIL SISWA */}
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setIsProfileOpen((prev) => !prev)
+              }
+              aria-expanded={isProfileOpen}
+              aria-label="Menu profil siswa"
+              className="flex items-center gap-3 rounded-xl p-1.5 transition-colors hover:bg-gray-50"
+            >
+              <div className="hidden text-right sm:block">
+                <p className="max-w-[170px] truncate text-sm font-bold text-gray-900">
+                  {userName}
+                </p>
+
+                <p className="text-xs text-gray-500">
+                  Siswa Aktif
+                </p>
+              </div>
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-600">
+                <UserCircle size={27} />
+              </div>
+
+              <ChevronDown
+                size={16}
+                className={`text-gray-400 transition-transform ${
+                  isProfileOpen
+                    ? "rotate-180"
+                    : ""
+                }`}
+              />
+            </button>
+
+            {/* DROPDOWN PROFIL */}
+
+            {isProfileOpen && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Tutup menu profil"
+                  onClick={() =>
+                    setIsProfileOpen(false)
+                  }
+                  className="fixed inset-0 z-30 cursor-default"
+                />
+
+                <div className="absolute right-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                  <div className="border-b border-gray-100 px-4 py-4">
+                    <p className="truncate text-sm font-bold text-gray-900">
+                      {userName}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      Akun Siswa CARE Indonesia
+                    </p>
+                  </div>
+
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={isLoggingOut}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <LogOut size={19} />
+
+                      {isLoggingOut
+                        ? "Sedang Keluar..."
+                        : "Keluar Akun"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </header>
 
-        {/* Area Isi Halaman */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50">
+        {/* ISI HALAMAN */}
+
+        <main className="min-h-0 flex-1 overflow-y-auto bg-[#f3f6ff] p-4 sm:p-6 md:p-8">
           {children}
         </main>
-
       </div>
     </div>
   );

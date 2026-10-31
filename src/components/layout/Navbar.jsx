@@ -22,12 +22,22 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 rounded-b-3xl bg-white/95 shadow-[0_1px_24px_rgba(109,92,255,0.08)] backdrop-blur">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="Care Minat Bakat">
-          <Image src="/logo.svg" alt="Care Minat Bakat" width={28} height={28} />
-          <span className="text-xl font-extrabold tracking-tight text-[#1b2352]">
-            Care Minat Bakat
-          </span>
-        </Link>
+        
+<Link
+  href="/"
+  className="flex shrink-0 items-center gap-2"
+  aria-label="Asesmen Minat Karier"
+>
+  <Image
+    src="/logo.svg"
+    alt="Asesmen Minat Karier"
+    width={28}
+    height={28}
+  />
+  <span className="text-xl font-extrabold tracking-tight text-[#1b2352]">
+    Asesmen Minat Karier
+  </span>
+</Link>
 
         <ul className="hidden items-center gap-7 lg:flex">
           {links.map((l) => (

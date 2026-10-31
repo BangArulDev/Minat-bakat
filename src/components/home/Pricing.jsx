@@ -228,39 +228,6 @@ export default function Pricing() {
             </div>
           ))}
         </div>
-
-        {/* Informasi Tambahan */}
-        <div className="mt-12 rounded-3xl border border-indigo-100 bg-white px-6 py-8 text-center shadow-sm sm:px-10">
-
-          <h3 className="text-xl font-bold text-[#141b3d]">
-            Membutuhkan Informasi Lebih Lanjut?
-          </h3>
-
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
-            Hubungi CARE Indonesia untuk mendapatkan informasi
-            mengenai pilihan paket, kuota peserta, serta proses
-            pembelian asesmen minat karier.
-          </p>
-
-          <a
-            href="https://care-indonesia.com/#contact"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl border border-[#6d5cff] px-6 py-3 text-sm font-bold text-[#6d5cff] transition-colors hover:bg-[#6d5cff] hover:text-white"
-          >
-            Hubungi CARE Indonesia
-            <ArrowUpRight size={17} />
-          </a>
-        </div>
-
-        {/* Catatan */}
-        <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-relaxed text-slate-500">
-          Harga yang tercantum merupakan daftar harga paket
-          Asesmen Minat Karier. Informasi mengenai pembelian
-          dan penggunaan kuota dapat dikonfirmasi melalui
-          CARE Indonesia.
-        </p>
-
       </div>
     </section>
   );

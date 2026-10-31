@@ -12,9 +12,13 @@ export async function saveRiasecResult(rawScores, dominantCode, consistency) {
       include: { studentProfile: true }
     });
 
-    if (!user || user.role !== "SISWA" || !user.studentProfile) {
-      return { error: "Hanya siswa yang dapat menyimpan hasil tes" };
-    }
+    if (!user) return { error: "User tidak ditemukan" };
+    if (user.role !== "SISWA") return { error: "Hanya siswa yang dapat menyimpan hasil tes" };
+    if (!user.studentProfile) return { error: "Profil siswa belum lengkap. Hubungi guru untuk mengecek akun Anda." };
+
+    // Hapus hasil lama (opsional: simpan hanya hasil terbaru)
+    // Bisa dihapus jika ingin menyimpan semua riwayat
+    // await prisma.riasecResult.deleteMany({ where: { studentId: user.studentProfile.id } });
 
     const result = await prisma.riasecResult.create({
       data: {
@@ -55,6 +59,44 @@ export async function getSiswaRiasecResults() {
   } catch (error) {
     console.error("Error getting riasec results:", error);
     return { error: "Gagal mengambil data hasil tes" };
+  }
+}
+
+// Ambil hasil tes terbaru siswa (untuk halaman hasil)
+export async function getSiswaLatestResult() {
+  try {
+    const session = await auth();
+    if (!session?.user) return { error: "Not authenticated" };
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { studentProfile: true }
+    });
+
+    if (!user || user.role !== "SISWA" || !user.studentProfile) {
+      return { error: "Akses ditolak" };
+    }
+
+    const result = await prisma.riasecResult.findFirst({
+      where: { studentId: user.studentProfile.id },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!result) return { success: true, data: null };
+
+    return {
+      success: true,
+      data: {
+        id: result.id,
+        rawScores: JSON.parse(result.rawScores || "{}"),
+        dominantCode: result.dominantCode,
+        consistency: result.consistency,
+        createdAt: result.createdAt
+      }
+    };
+  } catch (error) {
+    console.error("Error getting latest result:", error);
+    return { error: "Gagal mengambil hasil tes terbaru" };
   }
 }
 

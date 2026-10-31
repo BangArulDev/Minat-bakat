@@ -15,6 +15,8 @@ import {
   Target,
   BarChart3,
   Award,
+  Database,
+  WifiOff,
 } from "lucide-react";
 import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
 import {
@@ -24,47 +26,62 @@ import {
   getCareerRecommendations,
   getScorePercentages,
 } from "@/utils/riasecScoring";
+import { getSiswaLatestResult } from "@/app/actions/riasec";
 
 export default function HasilRiasecPage() {
   const router = useRouter();
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dataSource, setDataSource] = useState(null); // "db" | "session"
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem("riasec_answers");
-      if (!stored) {
+    async function loadResults() {
+      try {
+        // 1. Prioritas utama: baca dari database
+        const dbRes = await getSiswaLatestResult();
+        if (dbRes?.success && dbRes.data) {
+          const scores = dbRes.data.rawScores;
+          const code = getTopThreeCode(scores);
+          const ranked = getRankedScores(scores);
+          const consistency = getConsistencyLevel(code);
+          const career = getCareerRecommendations(code);
+          const percentages = getScorePercentages(scores);
+
+          setResults({ scores, code, ranked, consistency, career, percentages });
+          setDataSource("db");
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fallback: baca dari sessionStorage (baru selesai tes di tab ini)
+        const stored = sessionStorage.getItem("riasec_answers");
+        if (stored) {
+          const { answers, selfEstimates, scores } = JSON.parse(stored);
+          if (!scores) throw new Error("Skor tidak ditemukan.");
+
+          const code = getTopThreeCode(scores);
+          const ranked = getRankedScores(scores);
+          const consistency = getConsistencyLevel(code);
+          const career = getCareerRecommendations(code);
+          const percentages = getScorePercentages(scores);
+
+          setResults({ scores, code, ranked, consistency, career, percentages, answers, selfEstimates });
+          setDataSource("session");
+          setLoading(false);
+          return;
+        }
+
+        // 3. Tidak ada data sama sekali → arahkan kembali ke tes
         router.push("/siswa/tes-riasec");
-        return;
+      } catch (e) {
+        console.error("Error loading results:", e);
+        router.push("/siswa/tes-riasec");
+      } finally {
+        setLoading(false);
       }
-
-      const { answers, selfEstimates, scores } = JSON.parse(stored);
-      if (!scores) {
-        // Fallback for older sessions without scores (just redirect back to test)
-        throw new Error("Skor tidak ditemukan di session, harap ulang tes.");
-      }
-      const code = getTopThreeCode(scores);
-      const ranked = getRankedScores(scores);
-      const consistency = getConsistencyLevel(code);
-      const career = getCareerRecommendations(code);
-      const percentages = getScorePercentages(scores);
-
-      setResults({
-        scores,
-        code,
-        ranked,
-        consistency,
-        career,
-        percentages,
-        answers,
-        selfEstimates,
-      });
-    } catch (e) {
-      console.error("Error loading results:", e);
-      router.push("/siswa/tes-riasec");
-    } finally {
-      setLoading(false);
     }
+
+    loadResults();
   }, [router]);
 
   const handleDownloadPDF = useCallback(async () => {
@@ -209,6 +226,32 @@ export default function HasilRiasecPage() {
           </button>
         </div>
       </div>
+
+      {/* BANNER SUMBER DATA */}
+      {dataSource === "db" && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3"
+        >
+          <Database size={18} className="text-green-600 shrink-0" />
+          <p className="text-sm text-green-700 font-medium">
+            Hasil tes berhasil tersimpan di database dan dapat dilihat oleh guru BK Anda.
+          </p>
+        </motion.div>
+      )}
+      {dataSource === "session" && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
+        >
+          <WifiOff size={18} className="text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-700 font-medium">
+            Hasil tes hanya tersimpan di perangkat ini (belum ke database). Guru BK tidak dapat melihat hasil ini. Hubungi guru untuk memastikan akun Anda sudah terdaftar.
+          </p>
+        </motion.div>
+      )}
 
       {/* KODE DOMINAN CARD */}
       <motion.div

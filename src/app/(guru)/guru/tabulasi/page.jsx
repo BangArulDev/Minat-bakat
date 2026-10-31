@@ -47,6 +47,7 @@ export default function TabulasiPage() {
         const formatted = resultsRes.data.map(r => {
           let scoresObj = {};
           try {
+            // score kini berisi rawScores sebagai JSON string dengan format {R: n, I: n, A: n, S: n, E: n, C: n}
             if (typeof r.score === 'string' && r.score.startsWith('{')) {
               scoresObj = JSON.parse(r.score);
             }
@@ -58,7 +59,8 @@ export default function TabulasiPage() {
             class: r.className,
             testType: r.testType === "VAK (Gaya Belajar)" ? "VAK" : r.testType,
             scores: scoresObj,
-            dominant: r.result
+            dominant: r.result,
+            consistency: r.consistency || "-",
           };
         });
         setData(formatted);
@@ -174,7 +176,8 @@ export default function TabulasiPage() {
                   </th>
                 ))}
                 
-                <th className="py-4 px-6 font-semibold text-sm text-gray-500 border-l border-gray-200">Kesimpulan Dominan</th>
+                <th className="py-4 px-6 font-semibold text-sm text-gray-500 border-l border-gray-200">Kode Dominan</th>
+                <th className="py-4 px-4 font-semibold text-sm text-gray-500 border-l border-gray-200">Konsistensi</th>
               </tr>
             </thead>
 
@@ -216,11 +219,16 @@ export default function TabulasiPage() {
                         {item.dominant}
                       </span>
                     </td>
+                    <td className="py-3 px-4 border-l border-gray-100">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {item.consistency}
+                      </span>
+                    </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={currentConfig.columns.length + 3} className="py-12 text-center text-gray-500">
+                  <td colSpan={currentConfig.columns.length + 4} className="py-12 text-center text-gray-500">
                     Data tidak ditemukan untuk kelas ini.
                   </td>
                 </tr>

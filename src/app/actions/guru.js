@@ -396,7 +396,9 @@ export async function getResults() {
       testType: "RIASEC",
       date: r.createdAt.toLocaleDateString("id-ID"),
       result: r.dominantCode || "-",
-      score: r.consistency || "-",
+      // Kembalikan rawScores sebagai JSON string agar halaman tabulasi bisa parse skor per kategori
+      score: r.rawScores || "{}",
+      consistency: r.consistency || "-",
       status: "Selesai",
       color: "bg-blue-100 text-blue-700 border-blue-200"
     }));
@@ -407,6 +409,7 @@ export async function getResults() {
     return { error: error.message };
   }
 }
+
 
 export async function getDetailedResults() {
   try {

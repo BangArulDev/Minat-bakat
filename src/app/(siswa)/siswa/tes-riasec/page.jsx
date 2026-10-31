@@ -42,6 +42,8 @@ export default function TesRiasecPage() {
   const [dbQuestions, setDbQuestions] = useState([]);
   const [dbEstimates, setDbEstimates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
   const [showValidation, setShowValidation] = useState(false);
 
   useEffect(() => {
@@ -140,21 +142,31 @@ export default function TesRiasecPage() {
       setShowValidation(false);
     } else {
       // All steps done — save to DB and navigate to results
+      setSaving(true);
+      setSaveError(null);
       import("@/utils/riasecScoring").then(async ({ calculateScores, getTopThreeCode, getConsistencyLevel }) => {
-        const scores = calculateScores(answers, selfEstimates, dbQuestions, dbEstimates);
-        const code = getTopThreeCode(scores);
-        const consistency = getConsistencyLevel(code).level;
-        
-        const res = await saveRiasecResult(scores, code, consistency);
-        if (res?.error) {
-          alert("Perhatian: " + res.error + ". (Hasil Anda hanya akan tampil di perangkat ini dan tidak tersimpan di database).");
+        try {
+          const scores = calculateScores(answers, selfEstimates, dbQuestions, dbEstimates);
+          const code = getTopThreeCode(scores);
+          const consistency = getConsistencyLevel(code).level;
+
+          const res = await saveRiasecResult(scores, code, consistency);
+          if (res?.error) {
+            setSaving(false);
+            setSaveError(res.error);
+            return; // Jangan redirect jika gagal simpan
+          }
+
+          // Simpan juga ke sessionStorage sebagai cache tampilan
+          sessionStorage.setItem(
+            "riasec_answers",
+            JSON.stringify({ answers, selfEstimates, scores })
+          );
+          router.push("/siswa/hasil-riasec");
+        } catch (err) {
+          setSaving(false);
+          setSaveError("Terjadi kesalahan tidak terduga: " + err.message);
         }
-        
-        sessionStorage.setItem(
-          "riasec_answers",
-          JSON.stringify({ answers, selfEstimates, scores })
-        );
-        router.push("/siswa/hasil-riasec");
       });
     }
   };
@@ -187,6 +199,16 @@ export default function TesRiasecPage() {
   // ============================================================
   if (loading) {
     return <div className="flex justify-center items-center h-64"><p className="text-gray-500 animate-pulse">Memuat pertanyaan...</p></div>;
+  }
+
+  if (saving) {
+    return (
+      <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-lg font-semibold text-gray-700">Menyimpan hasil tes ke database...</p>
+        <p className="text-sm text-gray-400">Mohon tunggu, jangan tutup halaman ini</p>
+      </div>
+    );
   }
 
   return (
@@ -318,6 +340,62 @@ export default function TesRiasecPage() {
           )}
         </button>
       </div>
+
+      {/* ERROR MODAL saat gagal simpan */}
+      {saveError && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle className="text-red-600" size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Gagal Menyimpan Hasil</h3>
+                <p className="text-sm text-gray-500">Hasil tes tidak tersimpan ke database</p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+              <p className="text-sm text-red-700">{saveError}</p>
+            </div>
+            <p className="text-sm text-gray-600">
+              Kemungkinan penyebab: akun siswa belum terhubung ke kelas, atau terjadi gangguan koneksi.
+              Hubungi guru BK Anda untuk memastikan akun sudah terdaftar dengan benar.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSaveError(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+              >
+                Kembali ke Tes
+              </button>
+              <button
+                onClick={() => {
+                  setSaveError(null);
+                  setSaving(true);
+                  import("@/utils/riasecScoring").then(async ({ calculateScores, getTopThreeCode, getConsistencyLevel }) => {
+                    try {
+                      const scores = calculateScores(answers, selfEstimates, dbQuestions, dbEstimates);
+                      const code = getTopThreeCode(scores);
+                      const consistency = getConsistencyLevel(code).level;
+                      const res = await saveRiasecResult(scores, code, consistency);
+                      if (res?.error) { setSaving(false); setSaveError(res.error); return; }
+                      sessionStorage.setItem("riasec_answers", JSON.stringify({ answers, selfEstimates, scores }));
+                      router.push("/siswa/hasil-riasec");
+                    } catch(err) { setSaving(false); setSaveError("Gagal: " + err.message); }
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 transition-all"
+              >
+                Coba Lagi
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

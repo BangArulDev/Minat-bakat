@@ -1,83 +1,211 @@
+
 import Image from "next/image";
 import Link from "next/link";
-import { Instagram, Facebook, Youtube, Mail } from "lucide-react";
+import { Mail, MapPin, ExternalLink } from "lucide-react";
 
+// Navigasi halaman Asesmen Minat Karier
 const nav = [
-  { label: "Beranda", href: "/" },
-  { label: "Tentang RIASEC", href: "#tentang-riasec" },
-  { label: "Konsistensi Holland Code", href: "#konsistensi-holland" },
-  { label: "Lebih dari Sekadar Tes", href: "#mengapa-talenta" },
+  {
+    label: "Beranda",
+    href: "/",
+  },
+  {
+    label: "Tentang RIASEC",
+    href: "/#tentang-riasec",
+  },
+  {
+    label: "Konsistensi Holland Code",
+    href: "/#konsistensi-holland",
+  },
+  {
+    label: "Mengapa Penelusuran Minat Karier",
+    href: "/#mengapa-penelusuran-minat-karier",
+  },
 ];
 
-const social = [
-  { icon: Instagram, label: "Instagram" },
-  { icon: Facebook, label: "Facebook" },
-  { icon: Youtube, label: "YouTube" },
+// Informasi dan Kebijakan CARE Indonesia
+const policies = [
+  {
+    label: "Syarat dan Ketentuan",
+    href: "https://care-indonesia.com/terms",
+  },
+  {
+    label: "Kebijakan Refund",
+    href: "https://care-indonesia.com/refund",
+  },
+  {
+    label: "FAQ - Pertanyaan yang Sering Diajukan",
+    href: "https://care-indonesia.com/faq",
+  },
+  {
+    label: "Hubungi Kami",
+    href: "https://care-indonesia.com/#contact",
+  },
 ];
 
 export default function Footer() {
   return (
     <footer className="bg-[#141b3d] text-slate-300">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+
+        {/* Konten Utama Footer */}
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+
+          {/* Identitas Aplikasi */}
           <div>
-            <Link href="/" className="flex items-center gap-2">
-              <Image src="/logo.svg" alt="" width={28} height={28} />
+            <Link
+              href="/"
+              className="flex items-center gap-2"
+              aria-label="Asesmen Minat Karier"
+            >
+              <Image
+                src="/logo.svg"
+                alt="Logo Asesmen Minat Karier"
+                width={32}
+                height={32}
+              />
+
               <span className="text-xl font-extrabold tracking-tight text-white">
-                Care Minat Bakat
+                Asesmen Minat Karier
               </span>
             </Link>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed">
-              Tes RIASEC untuk membantu siswa memahami minat, bakat, kecocokan jurusan, dan arah
-              karier.
+
+            <p className="mt-4 max-w-sm text-sm leading-relaxed">
+              Asesmen minat karier berdasarkan teori Holland
+              (RIASEC) untuk membantu individu mengenali
+              kecenderungan minat vokasional, mengeksplorasi
+              pilihan pendidikan, dan merencanakan arah karier.
             </p>
-            <ul className="mt-4 flex gap-2">
-              {social.map((s) => (
-                <li key={s.label}>
-                  <a
-                    href="#"
-                    aria-label={s.label}
-                    className="inline-block rounded-lg bg-white/10 p-2 transition-colors hover:bg-white/20 hover:text-white"
-                  >
-                    <s.icon size={18} />
-                  </a>
-                </li>
-              ))}
-            </ul>
+
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-white">
+                Dikembangkan oleh
+              </p>
+
+              <a
+                href="https://care-indonesia.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-[#a9a0ff] transition-colors hover:text-white"
+              >
+                CARE Indonesia
+                <ExternalLink size={14} />
+              </a>
+
+              <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                Counseling, Assessment, Research and Education Center
+              </p>
+            </div>
           </div>
 
-          <nav aria-label="Halaman">
-            <h3 className="text-sm font-bold text-white">Halaman</h3>
-            <ul className="mt-3 space-y-2 text-sm">
-              {nav.map((l) => (
-                <li key={l.label}>
-                  <Link href={l.href} className="transition-colors hover:text-white">
-                    {l.label}
+          {/* Navigasi Halaman */}
+          <nav aria-label="Navigasi Footer">
+            <h3 className="text-sm font-bold text-white">
+              Halaman
+            </h3>
+
+            <ul className="mt-4 space-y-3 text-sm">
+              {nav.map((item) => (
+                <li key={item.label}>
+                  <Link
+                    href={item.href}
+                    className="transition-colors hover:text-white"
+                  >
+                    {item.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </nav>
 
+          {/* Informasi dan Kebijakan */}
+          <nav aria-label="Informasi dan Kebijakan">
+            <h3 className="text-sm font-bold text-white">
+              Informasi & Kebijakan
+            </h3>
+
+            <ul className="mt-4 space-y-3 text-sm">
+              {policies.map((item) => (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-start gap-1 transition-colors hover:text-white"
+                  >
+                    <span>{item.label}</span>
+                    <ExternalLink
+                      size={13}
+                      className="mt-0.5 shrink-0"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Kontak CARE Indonesia */}
           <div>
-            <h3 className="text-sm font-bold text-white">Kontak</h3>
-            <ul className="mt-3 space-y-3 text-sm">
+            <h3 className="text-sm font-bold text-white">
+              Kontak CARE Indonesia
+            </h3>
+
+            <ul className="mt-4 space-y-4 text-sm">
               <li className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0 text-[#6d5cff]">
-                  <Mail size={18} />
-                </span>
-                <a href="mailto:halo@caminatbakat.id" className="transition-colors hover:text-white">
-                  halo@caminatbakat.id
+                <Mail
+                  size={18}
+                  className="mt-0.5 shrink-0 text-[#a9a0ff]"
+                />
+
+                <a
+                  href="mailto:admincareindonesia@gmail.com"
+                  className="break-all transition-colors hover:text-white"
+                >
+                  admincareindonesia@gmail.com
                 </a>
               </li>
-              <li>Jakarta, Indonesia</li>
+
+              <li className="flex items-start gap-2">
+                <MapPin
+                  size={18}
+                  className="mt-0.5 shrink-0 text-[#a9a0ff]"
+                />
+
+                <span>
+                  Wonosalam, Demak,
+                  Jawa Tengah, Indonesia
+                </span>
+              </li>
             </ul>
+
+            <a
+              href="https://care-indonesia.com/#contact"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              Hubungi Kami
+              <ExternalLink size={15} />
+            </a>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-400">
-          © 2026 Care Minat Bakat. Seluruh hak cipta dilindungi.
+        {/* Hak Cipta */}
+        <div className="mt-12 border-t border-white/10 pt-6">
+          <div className="flex flex-col items-center justify-between gap-3 text-center text-xs text-slate-400 md:flex-row md:text-left">
+
+            <p>
+              © {new Date().getFullYear()} CARE Indonesia.
+              Seluruh hak cipta dilindungi.
+            </p>
+
+            <p>
+              Asesmen Minat Karier Holland (RIASEC)
+            </p>
+
+          </div>
         </div>
+
       </div>
     </footer>
   );

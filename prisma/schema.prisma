@@ -39,6 +39,10 @@ model TeacherProfile {
   whatsapp   String?
   schoolName String
   schoolCode String?
+  address    String?
+  province   String?
+  regency    String?
+  aliasCity  String?
   quota      Int      @default(0)
 
   classrooms   Classroom[]

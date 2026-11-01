@@ -6,14 +6,13 @@ import {
   Filter, 
   RefreshCw, 
   BellRing, 
-  RotateCcw, 
   CheckCircle, 
   Clock, 
   XCircle,
   MoreVertical,
   Eye
 } from "lucide-react";
-import { getStudents, getResults, resetStudentTest } from "@/app/actions/guru";
+import { getStudents, getResults } from "@/app/actions/guru";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,7 +22,7 @@ export default function AnalisisDataSiswaPage() {
   const [search, setSearch] = useState("");
   const [filterClass, setFilterClass] = useState("Semua Kelas");
   const [filterStatus, setFilterStatus] = useState("Semua Status");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -64,7 +63,36 @@ export default function AnalisisDataSiswaPage() {
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    async function load() {
+      const [studentsRes, resultsRes] = await Promise.all([getStudents(), getResults()]);
+      if (isMounted && studentsRes?.success) {
+        const resultsMap = {};
+        if (resultsRes?.success) {
+          resultsRes.data.forEach(r => {
+            resultsMap[r.nis] = r; 
+          });
+        }
+        
+        const combined = studentsRes.data.map(s => {
+          const hasResult = resultsMap[s.nis];
+          return {
+            id: s.id,
+            nis: s.nis,
+            name: s.name,
+            className: s.className,
+            status: hasResult ? "Selesai" : "Belum",
+            progress: hasResult ? 100 : 0,
+            lastActivity: hasResult ? hasResult.date : "-",
+            testType: hasResult ? hasResult.testType : "-"
+          };
+        });
+        setData(combined);
+      }
+      if (isMounted) setIsLoading(false);
+    }
+    load();
+    return () => { isMounted = false; };
   }, []);
 
   const handleRefresh = () => {
@@ -75,18 +103,6 @@ export default function AnalisisDataSiswaPage() {
   const handleRemind = (name) => {
     showToast('info', `Pengingat untuk ${name}: Siswa perlu login dan menyelesaikan tes RIASEC.`);
     setOpenDropdownId(null);
-  };
-
-  const handleReset = async (item) => {
-    if (!confirm(`Apakah Anda yakin ingin mereset progres tes siswa ${item.name}? Data jawaban akan hilang.`)) return;
-    setOpenDropdownId(null);
-    const res = await resetStudentTest(item.id);
-    if (res?.success) {
-      showToast('success', `Progres tes ${item.name} berhasil direset.`);
-      loadData();
-    } else {
-      showToast('error', res?.error || 'Gagal mereset tes.');
-    }
   };
 
   const handleRemindAll = () => {
@@ -305,15 +321,6 @@ export default function AnalisisDataSiswaPage() {
                                   <BellRing size={16} /> Ingatkan
                                 </button>
                               )}
-                              
-                              <div className="border-t border-gray-50" />
-                              
-                              <button 
-                            onClick={() => handleReset(item)}
-                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <RotateCcw size={16} /> Reset Tes
-                              </button>
                             </div>
                           )}
                         </AnimatePresence>

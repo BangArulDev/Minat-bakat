@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { 
   Search, 
   Filter, 
@@ -47,6 +49,43 @@ export default function TransaksiPage() {
     const matchStatus = filterStatus === "Semua" ? true : item.status === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  // Download PDF Bukti Pembayaran
+  const handleDownloadPDF = (tx) => {
+    const doc = new jsPDF({ format: "a5" });
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("BUKTI PEMBAYARAN", 74, 20, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("CARE Indonesia - Asesmen Minat Karier", 74, 27, { align: "center" });
+
+    doc.setLineWidth(0.5);
+    doc.line(10, 32, 138, 32);
+
+    autoTable(doc, {
+      startY: 36,
+      theme: "plain",
+      styles: { fontSize: 10, cellPadding: 3 },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 }, 1: { cellWidth: 78 } },
+      body: [
+        ["No. Referensi", tx.id],
+        ["Tanggal Bayar", tx.paymentDate],
+        ["Layanan", tx.service],
+        ["Metode", tx.method],
+        ["Total", new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(tx.price)],
+        ["Status", "LUNAS"],
+      ],
+    });
+
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text("Dokumen ini dibuat otomatis oleh sistem CARE Indonesia.", 74, doc.lastAutoTable.finalY + 10, { align: "center" });
+
+    doc.save(`Bukti_Pembayaran_${tx.id}.pdf`);
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -238,6 +277,7 @@ export default function TransaksiPage() {
                 </button>
                 <button 
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                  onClick={() => handleDownloadPDF(selectedTx)}
                 >
                   <Download size={18} /> Unduh PDF
                 </button>

@@ -31,6 +31,11 @@ export default function KelasPage() {
   const [search, setSearch] = useState("");
   const [openDropdownId, setOpenDropdownId] = useState(null);
 
+  // --- STATE FILTER & PAGINATION ---
+  const [filterStatus, setFilterStatus] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   // --- STATE MODAL FORM ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -58,7 +63,16 @@ export default function KelasPage() {
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    async function load() {
+      const res = await getClassrooms();
+      if (isMounted && res?.success) {
+        setData(res.data);
+      }
+      if (isMounted) setIsLoading(false);
+    }
+    load();
+    return () => { isMounted = false; };
   }, []);
 
   const handleRefresh = () => {
@@ -162,18 +176,23 @@ export default function KelasPage() {
     doc.save(`Data_Siswa_${selectedClass?.code || 'Export'}.pdf`);
   };
 
-  // --- PERBAIKAN: FILTER LEBIH AMAN ---
+  // --- FILTER & PAGINATION LOGIC ---
   const filteredData = data.filter(item => {
-    // Pastikan item tidak null
     if (!item) return false;
     
     const searchLower = search.toLowerCase();
-    // Pastikan properti code dan name ada sebelum di-lowercase
     const codeMatch = item.code ? item.code.toLowerCase().includes(searchLower) : false;
     const nameMatch = item.name ? item.name.toLowerCase().includes(searchLower) : false;
+    const matchesSearch = codeMatch || nameMatch;
 
-    return codeMatch || nameMatch;
+    const matchesStatus = filterStatus ? item.status === filterStatus : true;
+
+    return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE) || 1;
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedData = filteredData.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -212,7 +231,10 @@ export default function KelasPage() {
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Filter size={18} className="text-gray-400" />
           </div>
-          <select className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer appearance-none">
+          <select 
+            value={filterStatus}
+            onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer appearance-none">
             <option value="">Semua Status</option>
             <option value="active">Aktif</option>
             <option value="inactive">Non-Aktif</option>
@@ -224,7 +246,7 @@ export default function KelasPage() {
             type="text" 
             placeholder="Cari nama kelas atau kode..." 
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all"
           />
         </div>
@@ -246,10 +268,10 @@ export default function KelasPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               <AnimatePresence>
-                {filteredData.length > 0 ? (
-                  filteredData.map((item, index) => (
+                {paginatedData.length > 0 ? (
+                  paginatedData.map((item, index) => (
                     <motion.tr key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="hover:bg-blue-50/50 transition-colors">
-                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">{index + 1}</td>
+                      <td className="whitespace-nowrap w-auto py-4 px-6 text-sm text-center text-gray-500 font-medium">{(safePage - 1) * ITEMS_PER_PAGE + index + 1}</td>
                       <td className="whitespace-nowrap w-auto py-4 px-6 text-sm">
                         <span className="font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">{item.code}</span>
                       </td>
@@ -305,10 +327,19 @@ export default function KelasPage() {
           </table>
         </div>
         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-xs text-gray-500">Menampilkan <span className="font-bold text-gray-900">{filteredData.length}</span> kelas</p>
-          <div className="flex gap-2">
-             <button className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-500" disabled>Sebelumnya</button>
-             <button className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50">Selanjutnya</button>
+          <p className="text-xs text-gray-500">Menampilkan <span className="font-bold text-gray-900">{paginatedData.length}</span> dari <span className="font-bold text-gray-900">{filteredData.length}</span> kelas</p>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >Sebelumnya</button>
+            <span className="text-xs text-gray-500 px-1">{safePage} / {totalPages}</span>
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="px-3 py-1 bg-white border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >Selanjutnya</button>
           </div>
         </div>
       </div>

@@ -70,6 +70,7 @@ export async function getSiswaReportIdentity() {
         name: student.fullName || "",
         nis: student.nis || user.username || "",
         className: student.classroom?.name || "",
+        gender: student.gender || "",
         schoolName,
       },
     };

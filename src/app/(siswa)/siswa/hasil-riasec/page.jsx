@@ -97,6 +97,8 @@ function buildResult(rawScores, date) {
 
   const code = getTopThreeCode(scores);
 
+  const dominantPair = String(code || "").slice(0, 2);
+
   const ranked = getRankedScores(scores);
 
   const consistency = getConsistencyLevel(code);
@@ -110,6 +112,7 @@ function buildResult(rawScores, date) {
   return {
     scores,
     code,
+    dominantPair,
     ranked,
     consistency,
     career,
@@ -315,9 +318,17 @@ export default function HasilRiasecPage() {
 
       addHeading("A. IDENTITAS PESERTA");
 
+      const genderLabel =
+        identity.gender === "L"
+          ? "Laki-laki (L)"
+          : identity.gender === "P"
+          ? "Perempuan (P)"
+          : identity.gender || "—";
+
       const identityRows = [
         ["Nama Lengkap", identity.name || "—"],
         ["NIS", identity.nis || "—"],
+        ["Jenis Kelamin", genderLabel],
         ["Kelas", identity.className || "—"],
         ["Sekolah", identity.schoolName || "—"],
         [
@@ -353,11 +364,11 @@ export default function HasilRiasecPage() {
       addHeading("B. RINGKASAN HASIL");
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(15);
+      doc.setFontSize(14);
       doc.setTextColor(30, 64, 175);
 
       doc.text(
-        `Kode Holland: ${results.code}`,
+        `Kode Holland: ${results.code}   |   Pasangan Dominan: ${results.dominantPair}`,
         margin,
         y
       );
@@ -658,7 +669,7 @@ export default function HasilRiasecPage() {
           Identitas Peserta
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <IdentityItem
             label="Nama Lengkap"
             value={identity?.name}
@@ -669,6 +680,18 @@ export default function HasilRiasecPage() {
             label="NIS"
             value={identity?.nis}
             icon={Info}
+          />
+
+          <IdentityItem
+            label="Jenis Kelamin"
+            value={
+              identity?.gender === "L"
+                ? "Laki-laki (L)"
+                : identity?.gender === "P"
+                ? "Perempuan (P)"
+                : identity?.gender || "—"
+            }
+            icon={UserRound}
           />
 
           <IdentityItem
@@ -742,10 +765,20 @@ export default function HasilRiasecPage() {
           <div className="flex flex-wrap items-center gap-4">
             <div className="rounded-xl bg-white/15 px-4 py-3">
               <p className="text-xs text-blue-100">
+                Pasangan Dominan
+              </p>
+
+              <p className="font-bold text-lg font-mono">
+                {results.dominantPair}
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-white/15 px-4 py-3">
+              <p className="text-xs text-blue-100">
                 Konsistensi
               </p>
 
-              <p className="font-bold">
+              <p className="font-bold text-lg">
                 {results.consistency.level}
               </p>
             </div>

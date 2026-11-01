@@ -87,59 +87,49 @@ export default function TabulasiPage() {
     } finally {
       setLoading(false);
     }
-    load();
-  }, []);
-
-  // Export ke CSV
-  const handleExportCSV = () => {
-    if (filteredData.length === 0) {
-      alert("Tidak ada data untuk diekspor.");
-      return;
-    }
-    const config = testConfigs[selectedTest] || testConfigs["RIASEC"];
-    const headers = ["No", "Nama Siswa", "NIS", "Kelas", ...config.columns.map((c, i) => `${c} (${config.fullNames[i]})`), "Kode Dominan", "Konsistensi"];
-    const rows = filteredData.map((item, idx) => [
-      idx + 1,
-      `"${(item.name || "").replace(/"/g, '""')}"`,
-      `"${item.nis || "-"}"`,
-      `"${item.class || "-"}"`,
-      ...config.columns.map(col => item.scores[col] ?? 0),
-      `"${item.dominant || "-"}"`,
-      `"${item.consistency || "-"}"`
-    ]);
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Tabulasi_${selectedTest}_${selectedClass}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  // Konfigurasi kolom berdasarkan tes yang dipilih
-  const currentConfig = testConfigs[selectedTest] || testConfigs["RIASEC"];
-
-
-  // Filter Data
-  const filteredData = data.filter(item => 
-    item.class === selectedClass && 
-    item.testType === selectedTest &&
-    (item.name?.toLowerCase().includes(search.toLowerCase()) || 
-    item.nis?.includes(search))
-  );
-
-  // Helper: Cek apakah ini skor tertinggi di baris tersebut
-  const isHighest = (scores, key) => {
-    const values = Object.values(scores);
-    const max = Math.max(...values);
-    return scores[key] === max;
   };
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    async function load() {
+      try {
+        const [classRes, tabRes] = await Promise.all([
+          getClassrooms(),
+          getTabulasiAnswers(),
+        ]);
+
+        if (!classRes?.success) {
+          throw new Error(classRes?.error || "Gagal memuat kelas.");
+        }
+
+        if (!tabRes?.success) {
+          throw new Error(tabRes?.error || "Gagal memuat tabulasi.");
+        }
+
+        if (isMounted) {
+          const classData = classRes.data || [];
+          const tabData = tabRes.data || {};
+
+          setClasses(classData);
+          setStudents(tabData.students || []);
+          setQuestionIds(tabData.questionIds || []);
+          setEstimateIds(tabData.estimateIds || []);
+
+          setSelectedClass((previous) => {
+            const exists = classData.some((item) => item.id === previous);
+            return exists ? previous : classData[0]?.id || "";
+          });
+        }
+      } catch (err) {
+        console.error("Error tabulasi:", err);
+        if (isMounted) setError(err.message || "Gagal memuat data.");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { isMounted = false; };
   }, []);
 
   // ============================================

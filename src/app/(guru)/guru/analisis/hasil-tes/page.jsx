@@ -87,7 +87,8 @@ function HasilTesSiswaContent() {
     if (!isLoading && nisFromUrl && data.length > 0) {
       const found = data.find(item => item.nis === nisFromUrl);
       if (found) {
-        setActiveStudent(found);
+        const timer = setTimeout(() => setActiveStudent(found), 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [isLoading, nisFromUrl, data]);
@@ -177,10 +178,12 @@ function HasilTesSiswaContent() {
       "No",
       "Nama Siswa",
       "NIS",
+      "Jenis Kelamin",
       "Kelas",
       "Jenis Tes",
       "Tanggal Tes",
       "Kode Dominan",
+      "Pasangan Dominan",
       "Konsistensi",
       "Skor R",
       "Skor I",
@@ -197,14 +200,20 @@ function HasilTesSiswaContent() {
       }
       raw = raw || {};
 
+      const genderLabel = item.gender === "L" ? "Laki-laki" : item.gender === "P" ? "Perempuan" : item.gender || "-";
+      const dominantCode = item.dominantCode || item.result || "-";
+      const dominantPair = item.dominantPair || (dominantCode !== "-" ? dominantCode.slice(0, 2) : "-");
+
       return [
         idx + 1,
         `"${(item.name || "").replace(/"/g, '""')}"`,
         `"${item.nis || "-"}"`,
+        `"${genderLabel}"`,
         `"${item.className || "-"}"`,
         `"${item.testType || "RIASEC"}"`,
         `"${item.date || "-"}"`,
-        `"${item.dominantCode || item.result || "-"}"`,
+        `"${dominantCode}"`,
+        `"${dominantPair}"`,
         `"${item.consistency || "-"}"`,
         raw.R || 0,
         raw.I || 0,
@@ -320,6 +329,7 @@ function HasilTesSiswaContent() {
     return {
       student: activeStudent,
       dominantCode,
+      dominantPair: dominantCode.slice(0, 2),
       primaryType: riasecDescriptions[firstLetter] || null,
       secondaryType: riasecDescriptions[secondLetter] || null,
       thirdType: riasecDescriptions[thirdLetter] || null,
@@ -634,7 +644,7 @@ function HasilTesSiswaContent() {
                               {item.name}
                             </button>
                             <p className="text-xs text-gray-400 font-mono">
-                              NIS: {item.nis || "-"}
+                              NIS: {item.nis || "-"} {item.gender ? `• ${item.gender === "L" ? "L" : item.gender === "P" ? "P" : item.gender}` : ""}
                             </p>
                           </div>
                         </div>
@@ -657,7 +667,12 @@ function HasilTesSiswaContent() {
 
                       {/* Kode Dominan */}
                       <td className="py-4 px-5 whitespace-nowrap">
-                        {getDominantBadge(item.dominantCode || item.result)}
+                        <div className="flex flex-col gap-0.5">
+                          {getDominantBadge(item.dominantCode || item.result)}
+                          <span className="text-[10px] text-gray-500 font-medium">
+                            Pasangan: <span className="font-mono font-bold text-gray-700">{item.dominantPair || (item.dominantCode || item.result || "").slice(0, 2)}</span>
+                          </span>
+                        </div>
                       </td>
 
                       {/* Skor RIASEC Mini Breakdown */}
@@ -838,6 +853,9 @@ function HasilTesSiswaContent() {
                         NIS: {activeStudent.nis || "-"}
                       </span>
                       <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
+                        JK: {activeStudent.gender === "L" ? "Laki-laki (L)" : activeStudent.gender === "P" ? "Perempuan (P)" : activeStudent.gender || "-"}
+                      </span>
+                      <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
                         Kelas: {activeStudent.className || "-"}
                       </span>
                       <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
@@ -852,7 +870,10 @@ function HasilTesSiswaContent() {
                     <p className="text-2xl font-black text-amber-300 tracking-wider font-mono">
                       {activeStudentDetail.dominantCode}
                     </p>
-                    <p className="text-xs font-medium text-white/90 mt-0.5">
+                    <p className="text-xs font-semibold text-white/90 mt-0.5">
+                      Pasangan: <span className="font-mono text-amber-200 font-bold">{activeStudentDetail.dominantPair}</span>
+                    </p>
+                    <p className="text-[11px] font-medium text-white/80 mt-0.5">
                       {activeStudentDetail.primaryType?.label || activeStudentDetail.primaryType?.name || "-"}
                     </p>
                   </div>
@@ -865,9 +886,11 @@ function HasilTesSiswaContent() {
                       <Target size={18} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tingkat Konsistensi Minat</p>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Pasangan Dominan: <span className="text-blue-700 font-mono font-bold text-sm">{activeStudentDetail.dominantPair}</span>
+                      </p>
                       <p className="text-sm font-semibold text-gray-900">
-                        Konsistensi {activeStudentDetail.consistency?.level || "Sedang"}
+                        Tingkat Konsistensi: <span className="text-blue-700 font-bold">{activeStudentDetail.consistency?.level || "Sedang"}</span>
                       </p>
                     </div>
                   </div>

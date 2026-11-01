@@ -921,10 +921,10 @@ export async function getSchoolProfile() {
       data: {
         name: teacherProfile.schoolName || "",
         npsn: teacherProfile.schoolCode || "",
-        address: "",
-        province: "",
-        regency: "",
-        aliasCity: "",
+        address: teacherProfile.address || "",
+        province: teacherProfile.province || "",
+        regency: teacherProfile.regency || "",
+        aliasCity: teacherProfile.aliasCity || "",
         logo: null,
       },
     };
@@ -951,8 +951,12 @@ export async function saveSchoolProfile(data) {
         id: teacherProfile.id,
       },
       data: {
-        schoolName: data.name,
+        schoolName: data.name || teacherProfile.schoolName,
         schoolCode: data.npsn || null,
+        address: data.address || null,
+        province: data.province || null,
+        regency: data.regency || null,
+        aliasCity: data.aliasCity || null,
       },
     });
 
@@ -1001,7 +1005,8 @@ export async function getTransactions() {
 
 // ============================================
 // BUAT TRANSAKSI
-// Fungsi lama dipertahankan
+// Transaksi dibuat via /api/payment (Flip)
+// Fungsi ini sudah tidak digunakan di UI
 // ============================================
 
 export async function createTransaction(
@@ -1010,29 +1015,24 @@ export async function createTransaction(
   method
 ) {
   try {
-    const { db, user } = await requireGuruMock();
+    const { teacherProfile } = await requireGuru();
 
-    const newTx = {
-      id: "INV-" + Date.now(),
-      teacherId: user.id,
-      date: new Date().toLocaleDateString("id-ID"),
-      amount,
-      items,
-      method,
-      status: "Menunggu Pembayaran",
-    };
+    const orderId = "INV-" + Date.now();
 
-    if (!db.transactions) {
-      db.transactions = [];
-    }
-
-    db.transactions.push(newTx);
-
-    saveDB(db);
+    await prisma.transaction.create({
+      data: {
+        orderId,
+        teacherId: teacherProfile.id,
+        amount: amount || 0,
+        quotaAdded: 0,
+        status: "PENDING",
+        paymentType: method || "Manual",
+      },
+    });
 
     return {
       success: true,
-      data: newTx,
+      data: { id: orderId, amount, items, method },
     };
   } catch (error) {
     console.error("Error createTransaction:", error);
@@ -1092,11 +1092,13 @@ export async function getResults() {
           r.student.user.username,
         name: r.student.fullName,
         className: r.student.classroom.name,
+        gender: r.student.gender || "",
         testType: "RIASEC",
         date: r.createdAt.toLocaleDateString("id-ID"),
         createdAt: r.createdAt.toISOString(),
         result: r.dominantCode || "-",
         dominantCode: r.dominantCode || "-",
+        dominantPair: (r.dominantCode || "").slice(0, 2),
         score: r.rawScores || "{}",
         rawScores: parsedScores,
         consistency: r.consistency || "-",
@@ -1329,31 +1331,6 @@ export async function getTeacherQuota() {
     };
   } catch (error) {
     console.error("Error getTeacherQuota:", error);
-    return { error: error.message };
-  }
-}
-
-// === RESET TES SISWA ===
-export async function resetStudentTest(studentId) {
-  try {
-    const { teacherProfile } = await requireGuru();
-
-    // Pastikan siswa benar-benar milik guru ini
-    const student = await prisma.studentProfile.findFirst({
-      where: {
-        id: studentId,
-        classroom: { teacherId: teacherProfile.id }
-      }
-    });
-    if (!student) return { error: "Siswa tidak ditemukan atau bukan milik Anda." };
-
-    await prisma.riasecResult.deleteMany({
-      where: { studentId: studentId }
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error resetStudentTest:", error);
     return { error: error.message };
   }
 }

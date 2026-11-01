@@ -248,6 +248,49 @@ export async function deleteClassroom(id) {
 // DATA MASTER - SISWA
 // ============================================
 
+export async function getStudentsByClassroom(classroomId) {
+  try {
+    const { teacherProfile } = await requireGuru();
+
+    const students = await prisma.studentProfile.findMany({
+      where: {
+        classroomId: classroomId,
+        classroom: { teacherId: teacherProfile.id }
+      },
+      include: {
+        user: true,
+        classroom: true,
+        results: {
+          select: { dominantCode: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: {
+        fullName: 'asc'
+      }
+    });
+
+    const enriched = students.map(s => ({
+      id: s.id,
+      nis: s.nis || s.user?.username || "-",
+      name: s.fullName,
+      gender: s.gender || "L",
+      pob: s.birthPlace || "-",
+      dob: s.birthDate ? s.birthDate.toISOString().split('T')[0] : "-",
+      testCompleted: s.results && s.results.length > 0,
+      dominantCode: s.results?.[0]?.dominantCode || "-"
+    }));
+
+    return { success: true, data: enriched };
+  } catch (error) {
+    console.error("Error getStudentsByClassroom:", error);
+    return { error: error.message };
+  }
+}
+
+// === SISWA ===
+
 export async function getStudents() {
   try {
     const { teacherProfile } = await requireGuru();
@@ -933,23 +976,26 @@ export async function saveSchoolProfile(data) {
 
 export async function getTransactions() {
   try {
-    const { db, user } = await requireGuruMock();
+    const { teacherProfile } = await requireGuru();
+    const txList = await prisma.transaction.findMany({
+      where: { teacherId: teacherProfile.id },
+      orderBy: { createdAt: "desc" }
+    });
 
-    const transactions = (db.transactions || [])
-      .filter((t) => t.teacherId === user.id)
-      .reverse();
+    const enriched = txList.map(t => ({
+      id: t.orderId,
+      date: t.createdAt.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+      paymentDate: t.updatedAt.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+      service: `Kuota ${t.quotaAdded} Siswa`,
+      price: t.amount,
+      method: t.paymentType || "Transfer",
+      status: t.status === "SUCCESS" ? "success" : t.status === "FAILED" || t.status === "CANCEL" || t.status === "EXPIRED" ? "failed" : "pending",
+    }));
 
-    return {
-      success: true,
-      data: transactions,
-    };
-  } catch (error) {
+    return { success: true, data: enriched };
+  } catch(error) {
     console.error("Error getTransactions:", error);
-
-    return {
-      success: false,
-      error: error.message,
-    };
+    return { error: error.message };
   }
 }
 
@@ -1266,5 +1312,48 @@ export async function getTabulasiAnswers() {
       error:
         "Gagal mengambil data tabulasi siswa.",
     };
+  }
+}
+
+// === KUOTA GURU ===
+export async function getTeacherQuota() {
+  try {
+    const { teacherProfile } = await requireGuru();
+    return {
+      success: true,
+      data: {
+        quota: teacherProfile.quota ?? 0,
+        type: teacherProfile.quota > 0 ? "Aktif" : "Habis",
+        validUntil: "Selamanya"
+      }
+    };
+  } catch (error) {
+    console.error("Error getTeacherQuota:", error);
+    return { error: error.message };
+  }
+}
+
+// === RESET TES SISWA ===
+export async function resetStudentTest(studentId) {
+  try {
+    const { teacherProfile } = await requireGuru();
+
+    // Pastikan siswa benar-benar milik guru ini
+    const student = await prisma.studentProfile.findFirst({
+      where: {
+        id: studentId,
+        classroom: { teacherId: teacherProfile.id }
+      }
+    });
+    if (!student) return { error: "Siswa tidak ditemukan atau bukan milik Anda." };
+
+    await prisma.riasecResult.deleteMany({
+      where: { studentId: studentId }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error resetStudentTest:", error);
+    return { error: error.message };
   }
 }

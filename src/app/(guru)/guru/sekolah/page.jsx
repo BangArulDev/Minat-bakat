@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
   School, 
   MapPin, 
@@ -18,6 +18,13 @@ import { useEffect } from "react";
 export default function SekolahPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // State Data Sekolah
   const [schoolData, setSchoolData] = useState({
@@ -50,19 +57,51 @@ export default function SekolahPage() {
     setIsEditing(false);
     const res = await saveSchoolProfile(schoolData);
     if (res?.success) {
-      alert("Data sekolah berhasil diperbarui!");
+      showToast('success', 'Data sekolah berhasil diperbarui!');
     } else {
-      alert("Gagal menyimpan data.");
+      showToast('error', 'Gagal menyimpan data.');
+      setIsEditing(true);
     }
   };
 
   const handleLogoUpload = () => {
     if (!isEditing) return;
-    alert("Membuka file dialog untuk upload logo...");
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('error', 'File harus berupa gambar (JPG, PNG, SVG).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setSchoolData(prev => ({ ...prev, logo: ev.target.result }));
+      showToast('success', 'Logo berhasil dimuat. Klik Simpan Data untuk menyimpan.');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      {/* TOAST */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-white text-sm font-semibold
+          ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
+        </div>
+      )}
       
       {/* HEADER */}
       <div>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { getDB, saveDB } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 
 // ============================================
 // HELPER AUTENTIKASI GURU
@@ -946,19 +947,31 @@ export async function saveSchoolProfile(data) {
   try {
     const { teacherProfile } = await requireGuru();
 
+    const schoolName = (data?.name || teacherProfile.schoolName || "").trim();
+    if (!schoolName) {
+      return {
+        success: false,
+        error: "Nama sekolah tidak boleh kosong.",
+      };
+    }
+
     await prisma.teacherProfile.update({
       where: {
         id: teacherProfile.id,
       },
       data: {
-        schoolName: data.name || teacherProfile.schoolName,
-        schoolCode: data.npsn || null,
-        address: data.address || null,
-        province: data.province || null,
-        regency: data.regency || null,
-        aliasCity: data.aliasCity || null,
+        schoolName: schoolName,
+        schoolCode: data?.npsn ? String(data.npsn).trim() : null,
+        address: data?.address ? String(data.address).trim() : null,
+        province: data?.province ? String(data.province).trim() : null,
+        regency: data?.regency ? String(data.regency).trim() : null,
+        aliasCity: data?.aliasCity ? String(data.aliasCity).trim() : null,
       },
     });
+
+    revalidatePath("/guru/sekolah");
+    revalidatePath("/guru/laporan-lengkap");
+    revalidatePath("/guru/cover");
 
     return {
       success: true,
@@ -968,7 +981,7 @@ export async function saveSchoolProfile(data) {
 
     return {
       success: false,
-      error: error.message,
+      error: error.message || "Gagal menyimpan data sekolah.",
     };
   }
 }

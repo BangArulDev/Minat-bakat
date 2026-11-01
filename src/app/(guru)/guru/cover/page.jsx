@@ -31,14 +31,17 @@ export default function CoverLaporanPage() {
   useEffect(() => {
     async function load() {
       const res = await getSchoolProfile();
+      const savedLogo = typeof window !== "undefined" ? localStorage.getItem("school_logo") : null;
       if (res?.success) {
         setSettings(prev => ({
           ...prev,
           schoolName: res.data.name || prev.schoolName,
           schoolAddress: res.data.address || prev.schoolAddress,
           city: res.data.aliasCity || prev.city,
-          logoUrl: res.data.logo || prev.logoUrl
+          logoUrl: savedLogo || res.data.logo || prev.logoUrl
         }));
+      } else if (savedLogo) {
+        setSettings(prev => ({ ...prev, logoUrl: savedLogo }));
       }
     }
     load();

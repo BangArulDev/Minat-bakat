@@ -10,7 +10,8 @@ import {
   Save, 
   Camera, 
   UploadCloud,
-  Hash
+  Hash,
+  Loader2
 } from "lucide-react";
 import { getSchoolProfile, saveSchoolProfile } from "@/app/actions/guru";
 import { useEffect } from "react";
@@ -18,6 +19,7 @@ import { useEffect } from "react";
 export default function SekolahPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -39,11 +41,20 @@ export default function SekolahPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await getSchoolProfile();
-      if (res?.success) {
-        setSchoolData(res.data);
+      try {
+        const res = await getSchoolProfile();
+        const savedLogo = typeof window !== "undefined" ? localStorage.getItem("school_logo") : null;
+        if (res?.success && res.data) {
+          setSchoolData({
+            ...res.data,
+            logo: savedLogo || res.data.logo || null
+          });
+        }
+      } catch (err) {
+        console.error("Gagal memuat profil sekolah:", err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
     load();
   }, []);
@@ -54,18 +65,41 @@ export default function SekolahPage() {
   };
 
   const handleSave = async () => {
-    setIsEditing(false);
-    const res = await saveSchoolProfile(schoolData);
-    if (res?.success) {
-      showToast('success', 'Data sekolah berhasil diperbarui!');
-    } else {
-      showToast('error', 'Gagal menyimpan data.');
-      setIsEditing(true);
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await saveSchoolProfile({
+        name: schoolData.name,
+        npsn: schoolData.npsn,
+        address: schoolData.address,
+        province: schoolData.province,
+        regency: schoolData.regency,
+        aliasCity: schoolData.aliasCity,
+      });
+
+      if (res?.success) {
+        if (schoolData.logo && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("school_logo", schoolData.logo);
+          } catch (e) {
+            console.warn("Gagal menyimpan logo ke localStorage:", e);
+          }
+        }
+        showToast('success', 'Data sekolah berhasil diperbarui!');
+        setIsEditing(false);
+      } else {
+        showToast('error', res?.error || 'Gagal menyimpan data.');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('error', err?.message || 'Terjadi kesalahan sistem saat menyimpan.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleLogoUpload = () => {
-    if (!isEditing) return;
+    if (!isEditing || isSaving) return;
     fileInputRef.current?.click();
   };
 
@@ -78,8 +112,32 @@ export default function SekolahPage() {
     }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setSchoolData(prev => ({ ...prev, logo: ev.target.result }));
-      showToast('success', 'Logo berhasil dimuat. Klik Simpan Data untuk menyimpan.');
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 250;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/png");
+        setSchoolData(prev => ({ ...prev, logo: dataUrl }));
+        showToast('success', 'Logo berhasil dimuat. Klik Simpan Data untuk menyimpan.');
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -185,8 +243,11 @@ export default function SekolahPage() {
                 <Building2 size={18} /> Detail Sekolah
               </h3>
               <button 
+                disabled={isSaving}
                 onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isSaving ? "opacity-75 cursor-not-allowed" : ""
+                }
                   ${isEditing 
                     ? "bg-green-600 text-white hover:bg-green-700 shadow-md shadow-green-200" 
                     : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -194,7 +255,11 @@ export default function SekolahPage() {
                 `}
               >
                 {isEditing ? (
-                  <><Save size={16} /> Simpan Data</>
+                  isSaving ? (
+                    <><Loader2 size={16} className="animate-spin" /> Menyimpan...</>
+                  ) : (
+                    <><Save size={16} /> Simpan Data</>
+                  )
                 ) : (
                   <><Edit3 size={16} /> Edit Data</>
                 )}

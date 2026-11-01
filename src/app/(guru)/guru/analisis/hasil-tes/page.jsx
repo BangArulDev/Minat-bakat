@@ -22,10 +22,11 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import { getResults, getClassrooms } from "@/app/actions/guru";
+import { getResults, getClassrooms, getSchoolProfile } from "@/app/actions/guru";
 import { getScorePercentages, getCareerRecommendations, getConsistencyLevel } from "@/utils/riasecScoring";
 import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
 import { useSearchParams, useRouter } from "next/navigation";
+import RiasecStudentReport from "@/components/riasec/RiasecStudentReport";
 
 function HasilTesSiswaContent() {
   const router = useRouter();
@@ -34,6 +35,7 @@ function HasilTesSiswaContent() {
 
   const [data, setData] = useState([]);
   const [classList, setClassList] = useState([]);
+  const [schoolName, setSchoolName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   // Filters
@@ -61,9 +63,10 @@ function HasilTesSiswaContent() {
     async function load() {
       setIsLoading(true);
       try {
-        const [resultsRes, classesRes] = await Promise.all([
+        const [resultsRes, classesRes, schoolRes] = await Promise.all([
           getResults(),
-          getClassrooms()
+          getClassrooms(),
+          getSchoolProfile(),
         ]);
 
         if (resultsRes?.success) {
@@ -72,6 +75,10 @@ function HasilTesSiswaContent() {
 
         if (classesRes?.success) {
           setClassList(classesRes.data.map(c => c.name));
+        }
+
+        if (schoolRes?.success && schoolRes.data?.name) {
+          setSchoolName(schoolRes.data.name);
         }
       } catch (err) {
         console.error("Gagal memuat hasil tes:", err);
@@ -242,104 +249,6 @@ function HasilTesSiswaContent() {
     setSelectedDominant("Semua");
     setSelectedConsistency("Semua");
   };
-
-  // Build detail data for the active student in modal
-  const activeStudentDetail = useMemo(() => {
-    if (!activeStudent) return null;
-
-    let raw = activeStudent.rawScores;
-    if (typeof raw === "string") {
-      try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
-    }
-    if (!raw && activeStudent.score) {
-      try {
-        raw = typeof activeStudent.score === "string" ? JSON.parse(activeStudent.score) : activeStudent.score;
-      } catch (e) {
-        raw = {};
-      }
-    }
-    raw = raw || {};
-
-    const percentages = getScorePercentages(raw);
-    const dominantCode = (activeStudent.dominantCode || activeStudent.result || "RIA").toUpperCase();
-    
-    // Career recommendations check
-    const recs = getCareerRecommendations(dominantCode) || {
-      interpretation: "",
-      recommendations: []
-    };
-
-    const firstLetter = (dominantCode[0] || "R").toUpperCase();
-    const secondLetter = (dominantCode[1] || "").toUpperCase();
-    const thirdLetter = (dominantCode[2] || "").toUpperCase();
-
-    const scoresList = RIASEC_ORDER.map(type => ({
-      code: type,
-      name: riasecDescriptions[type]?.name || type,
-      label: riasecDescriptions[type]?.label || type,
-      score: percentages[type] ?? 0,
-      rawScore: raw[type] ?? 0,
-      color: riasecDescriptions[type]?.color || "#3b82f6",
-      desc: riasecDescriptions[type]?.shortDesc || ""
-    })).sort((a, b) => b.score - a.score);
-
-    // Split majors vs careers from recommendations
-    let majors = (recs.recommendations || []).filter(r => 
-      r.includes("Jurusan") || r.includes("Pendidikan") || r.includes("Ilmu") || 
-      r.includes("Teknik") || r.includes("Sastra") || r.includes("Seni") || 
-      r.includes("Desain") || r.includes("Manajemen") || r.includes("Akuntansi")
-    );
-    let careers = (recs.recommendations || []).filter(r => !majors.includes(r));
-
-    // Fallback cerdas jika kombinasi 3 huruf tidak ditemukan (misal: RAS)
-    if (majors.length === 0 && careers.length === 0) {
-      const combinedCareers = [
-        ...(riasecDescriptions[firstLetter]?.careers || []),
-        ...(riasecDescriptions[secondLetter]?.careers || []),
-        ...(riasecDescriptions[thirdLetter]?.careers || [])
-      ];
-      careers = Array.from(new Set(combinedCareers)).slice(0, 8);
-
-      majors = [
-        `Teknik & Desain Terapan (${riasecDescriptions[firstLetter]?.name || "Utama"})`,
-        `Pendidikan & Pelatihan Terapan`,
-        `Komunikasi Visual & Media Terapan`,
-        `Teknologi & Manajemen Terapan`
-      ];
-    } else if (majors.length === 0 && careers.length > 0) {
-      majors = careers.slice(0, 3);
-      careers = careers.slice(3);
-    }
-
-    let interpretation = recs.interpretation;
-    if (!interpretation) {
-      const p1 = riasecDescriptions[firstLetter]?.label || firstLetter;
-      const p2 = riasecDescriptions[secondLetter]?.label || secondLetter;
-      const p3 = riasecDescriptions[thirdLetter]?.label || thirdLetter;
-      interpretation = `Siswa memiliki kecenderungan minat dominan pada pola ${dominantCode} (${p1}, ${p2}, dan ${p3}). Siswa unggul dalam keterampilan nyata dan terapan, dipadukan dengan daya imajinasi serta kemampuan berinteraksi positif dengan lingkungan sosial di sekitarnya.`;
-    }
-
-    let consInfo = { level: "Sedang", description: "Menunjukkan konsistensi minat yang terarah." };
-    try {
-      consInfo = getConsistencyLevel(dominantCode);
-    } catch (e) {
-      consInfo = { level: activeStudent.consistency || "Sedang", description: "" };
-    }
-
-    return {
-      student: activeStudent,
-      dominantCode,
-      dominantPair: dominantCode.slice(0, 2),
-      primaryType: riasecDescriptions[firstLetter] || null,
-      secondaryType: riasecDescriptions[secondLetter] || null,
-      thirdType: riasecDescriptions[thirdLetter] || null,
-      interpretation,
-      scoresList,
-      majors,
-      careers,
-      consistency: consInfo
-    };
-  }, [activeStudent]);
 
   // Navigate between students in modal
   const handleNextStudent = () => {
@@ -769,7 +678,7 @@ function HasilTesSiswaContent() {
 
       {/* 5. MODAL DETAIL HASIL SISWA */}
       <AnimatePresence>
-        {activeStudent && activeStudentDetail && (
+        {activeStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
             {/* Backdrop */}
             <motion.div 
@@ -788,284 +697,28 @@ function HasilTesSiswaContent() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-gray-100 text-left overflow-hidden z-10 my-auto"
+              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-gray-100 text-left overflow-hidden z-10 my-auto max-h-[92vh] flex flex-col"
             >
-              
-              {/* Modal Top Action Bar */}
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-blue-600" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Laporan Hasil Asesmen Holland RIASEC
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Prev/Next student */}
-                  <button 
-                    type="button"
-                    onClick={handlePrevStudent}
-                    className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-                    title="Siswa Sebelumnya"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={handleNextStudent}
-                    className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
-                    title="Siswa Selanjutnya"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                  <div className="h-4 w-px bg-gray-300 mx-1" />
-                  <button 
-                    type="button"
-                    onClick={() => window.print()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Printer size={15} />
-                    <span>Cetak</span>
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setActiveStudent(null)}
-                    className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer ml-1"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+              <div className="p-6 md:p-8 overflow-y-auto">
+                <RiasecStudentReport
+                  identity={{
+                    name: activeStudent.name,
+                    nis: activeStudent.nis,
+                    gender: activeStudent.gender,
+                    className: activeStudent.className,
+                    schoolName: schoolName,
+                  }}
+                  rawScores={activeStudent.rawScores}
+                  date={activeStudent.createdAt || activeStudent.date}
+                  dominantCode={activeStudent.dominantCode}
+                  consistency={activeStudent.consistency}
+                  onClose={() => setActiveStudent(null)}
+                  onPrev={handlePrevStudent}
+                  onNext={handleNextStudent}
+                  title="Detail Hasil Asesmen Siswa"
+                  subtitle={`Laporan individual peserta didik: ${activeStudent.name}`}
+                />
               </div>
-
-              {/* Modal Printable Content Container */}
-              <div id="printable-report" className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto">
-                
-                {/* Hero Student Banner */}
-                <div className="bg-linear-to-r from-blue-700 via-indigo-700 to-purple-800 rounded-2xl p-6 text-white shadow-md flex flex-col md:flex-row items-center gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border-2 border-white/30 text-2xl font-black shadow-inner shrink-0">
-                    {activeStudent.name ? activeStudent.name.substring(0, 2).toUpperCase() : "??"}
-                  </div>
-
-                  <div className="flex-1 text-center md:text-left">
-                    <h2 className="text-2xl font-black tracking-tight mb-1">{activeStudent.name}</h2>
-                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 text-xs text-white/90">
-                      <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20 font-mono">
-                        NIS: {activeStudent.nis || "-"}
-                      </span>
-                      <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
-                        JK: {activeStudent.gender === "L" ? "Laki-laki (L)" : activeStudent.gender === "P" ? "Perempuan (P)" : activeStudent.gender || "-"}
-                      </span>
-                      <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
-                        Kelas: {activeStudent.className || "-"}
-                      </span>
-                      <span className="px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
-                        Tanggal: {activeStudent.date || "-"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Dominant Highlight Badge */}
-                  <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 text-center shrink-0">
-                    <p className="text-[10px] uppercase font-bold tracking-widest text-white/70 mb-0.5">Tipe Dominan</p>
-                    <p className="text-2xl font-black text-amber-300 tracking-wider font-mono">
-                      {activeStudentDetail.dominantCode}
-                    </p>
-                    <p className="text-xs font-semibold text-white/90 mt-0.5">
-                      Pasangan: <span className="font-mono text-amber-200 font-bold">{activeStudentDetail.dominantPair}</span>
-                    </p>
-                    <p className="text-[11px] font-medium text-white/80 mt-0.5">
-                      {activeStudentDetail.primaryType?.label || activeStudentDetail.primaryType?.name || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Konsistensi Banner */}
-                <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <Target size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                        Pasangan Dominan: <span className="text-blue-700 font-mono font-bold text-sm">{activeStudentDetail.dominantPair}</span>
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        Tingkat Konsistensi: <span className="text-blue-700 font-bold">{activeStudentDetail.consistency?.level || "Sedang"}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-600 max-w-md sm:text-right">
-                    {activeStudentDetail.consistency?.description || "Menunjukkan minat yang konsisten dan terarah."}
-                  </p>
-                </div>
-
-                {/* Dua Kolom: Grafik Skor & Interpretasi */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  
-                  {/* Kolom Kiri: Bar Skor RIASEC */}
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                      <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                        <FileText size={18} className="text-blue-600" />
-                        Grafik Skor 6 Dimensi Holland
-                      </h3>
-                      <span className="text-xs text-gray-400">Persentase</span>
-                    </div>
-
-                    <div className="space-y-4">
-                      {activeStudentDetail.scoresList.map((item) => (
-                        <div key={item.code} className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs">
-                            <div className="flex items-center gap-2">
-                              <span 
-                                className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
-                                style={{ backgroundColor: item.color }}
-                              >
-                                {item.code}
-                              </span>
-                              <span className="font-bold text-gray-800">{item.name}</span>
-                              <span className="text-gray-400 text-[11px]">({item.desc})</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-gray-400 text-[11px]">Skor: {item.rawScore}</span>
-                              <span className="font-bold text-gray-900 font-mono text-xs">{item.score}%</span>
-                            </div>
-                          </div>
-                          
-                          {/* Bar Visual */}
-                          <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.min(100, Math.max(0, item.score))}%` }}
-                              transition={{ duration: 0.8, ease: "easeOut" }}
-                              className="h-full rounded-full"
-                              style={{ backgroundColor: item.color }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Kolom Kanan: Interpretasi Karakteristik */}
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-                    <div className="border-b border-gray-100 pb-3">
-                      <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                        <Sparkles size={18} className="text-purple-600" />
-                        Interpretasi Profil Karakteristik
-                      </h3>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-xl">
-                        <p className="text-xs font-bold text-purple-900 uppercase tracking-wider mb-1">
-                          Ringkasan Potensi Dominan:
-                        </p>
-                        <p className="text-xs text-purple-950/80 leading-relaxed">
-                          {activeStudentDetail.interpretation}
-                        </p>
-                      </div>
-
-                      {activeStudentDetail.primaryType && (
-                        <div className="p-3.5 bg-gray-50 border border-gray-100 rounded-xl space-y-1">
-                          <p className="text-xs font-bold text-gray-900">
-                            Karakteristik Tipe Utama ({activeStudentDetail.primaryType.name}):
-                          </p>
-                          <p className="text-xs text-gray-600 leading-relaxed">
-                            {activeStudentDetail.primaryType.description}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Rekomendasi Jurusan & Karir */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Rekomendasi Jurusan Kuliah */}
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-3">
-                    <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                      <BookOpen size={17} className="text-indigo-600" />
-                      Rekomendasi Jurusan / Program Studi
-                    </h4>
-                    {activeStudentDetail.majors.length > 0 ? (
-                      <div className="space-y-2">
-                        {activeStudentDetail.majors.map((major, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 p-2.5 bg-indigo-50/50 rounded-xl border border-indigo-100/60 text-xs">
-                            <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-                            <span className="font-medium text-gray-800">{major}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic">Rekomendasi jurusan belum tersedia.</p>
-                    )}
-                  </div>
-
-                  {/* Prospek Karir & Profesi */}
-                  <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-3">
-                    <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                      <Briefcase size={17} className="text-orange-600" />
-                      Prospek Profesi & Karier Masa Depan
-                    </h4>
-                    {activeStudentDetail.careers.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {activeStudentDetail.careers.map((career, idx) => (
-                          <span 
-                            key={idx}
-                            className="px-3 py-1.5 bg-orange-50 text-orange-800 border border-orange-200/80 rounded-lg text-xs font-medium"
-                          >
-                            {career}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic">Prospek karier belum tersedia.</p>
-                    )}
-                  </div>
-
-                </div>
-
-                {/* Area Khusus Cetak Tanda Tangan (Tersembunyi di layar normal, tampil saat print) */}
-                <div className="hidden print:block pt-12 mt-12 border-t border-gray-300">
-                  <div className="flex justify-between text-xs text-gray-700">
-                    <div>
-                      <p>Mengetahui,</p>
-                      <p className="font-semibold mt-1">Kepala Sekolah</p>
-                      <div className="h-16" />
-                      <p className="font-bold underline">_________________________</p>
-                      <p>NIP: .......................................</p>
-                    </div>
-                    <div className="text-right">
-                      <p>Dicetak pada: {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</p>
-                      <p className="font-semibold mt-1">Guru Bimbingan Konseling (BK)</p>
-                      <div className="h-16" />
-                      <p className="font-bold underline">_________________________</p>
-                      <p>NIP: .......................................</p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Modal Footer */}
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <p className="text-xs text-gray-500">
-                  Tekan tombol <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">Cetak</kbd> untuk mencetak atau simpan sebagai PDF.
-                </p>
-                <button 
-                  type="button"
-                  onClick={() => setActiveStudent(null)}
-                  className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
-                >
-                  Tutup
-                </button>
-              </div>
-
             </motion.div>
           </div>
         )}

@@ -1183,6 +1183,7 @@ export async function getDetailedResults() {
           r.student.user.username,
         name: r.student.fullName,
         className: r.student.classroom.name,
+        gender: r.student.gender || "",
         dominantCode: r.dominantCode || "-",
         rawScores: parsedScores,
         consistency: r.consistency || "-",

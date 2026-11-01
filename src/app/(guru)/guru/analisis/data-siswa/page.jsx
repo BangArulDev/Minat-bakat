@@ -13,7 +13,7 @@ import {
   MoreVertical,
   Eye
 } from "lucide-react";
-import { getStudents, getResults } from "@/app/actions/guru";
+import { getStudents, getResults, resetStudentTest } from "@/app/actions/guru";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -25,6 +25,12 @@ export default function AnalisisDataSiswaPage() {
   const [filterStatus, setFilterStatus] = useState("Semua Status");
   const [isLoading, setIsLoading] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   // --- LOGIC ---
   
@@ -67,15 +73,29 @@ export default function AnalisisDataSiswaPage() {
   };
 
   const handleRemind = (name) => {
-    alert(`Mengirim notifikasi pengingat kepada ${name}...`);
+    showToast('info', `Pengingat untuk ${name}: Siswa perlu login dan menyelesaikan tes RIASEC.`);
     setOpenDropdownId(null);
   };
 
-  const handleReset = (name) => {
-    if(confirm(`Apakah Anda yakin ingin mereset progres tes siswa ${name}? Data jawaban akan hilang.`)) {
-      alert("Progres berhasil direset.");
-    }
+  const handleReset = async (item) => {
+    if (!confirm(`Apakah Anda yakin ingin mereset progres tes siswa ${item.name}? Data jawaban akan hilang.`)) return;
     setOpenDropdownId(null);
+    const res = await resetStudentTest(item.id);
+    if (res?.success) {
+      showToast('success', `Progres tes ${item.name} berhasil direset.`);
+      loadData();
+    } else {
+      showToast('error', res?.error || 'Gagal mereset tes.');
+    }
+  };
+
+  const handleRemindAll = () => {
+    const belumCount = data.filter(d => d.status === 'Belum').length;
+    if (belumCount === 0) {
+      showToast('info', 'Semua siswa sudah menyelesaikan tes.');
+    } else {
+      showToast('info', `${belumCount} siswa belum mengerjakan tes. Informasikan kepada mereka untuk login dan menyelesaikan tes RIASEC.`);
+    }
   };
 
   // Filter Logic
@@ -100,6 +120,14 @@ export default function AnalisisDataSiswaPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* TOAST */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-white text-sm font-semibold max-w-md
+          ${toast.type === 'success' ? 'bg-green-600' : toast.type === 'error' ? 'bg-red-600' : 'bg-blue-600'}`}>
+          <span className="shrink-0">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}</span>
+          <span>{toast.msg}</span>
+        </div>
+      )}
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -116,7 +144,7 @@ export default function AnalisisDataSiswaPage() {
             <RefreshCw size={20} className={isLoading ? "animate-spin" : ""} />
           </button>
           <button 
-            onClick={() => alert("Mengirim pengingat massal...")}
+            onClick={handleRemindAll}
             className="flex items-center gap-2 px-5 py-2.5 bg-orange-100 text-orange-700 font-bold rounded-xl hover:bg-orange-200 transition-all"
           >
             <BellRing size={18} />
@@ -281,7 +309,7 @@ export default function AnalisisDataSiswaPage() {
                               <div className="border-t border-gray-50" />
                               
                               <button 
-                                onClick={() => handleReset(item.name)}
+                            onClick={() => handleReset(item)}
                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                               >
                                 <RotateCcw size={16} /> Reset Tes

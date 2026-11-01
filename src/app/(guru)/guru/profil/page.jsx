@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { getUserProfile, updateUserProfile } from "@/app/actions/auth";
+import { getTeacherQuota } from "@/app/actions/guru";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { 
@@ -22,6 +23,12 @@ export default function ProfilGuruPage() {
   const { data: session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null); // { type: 'success'|'error', msg: string }
+  
+  const showToast = (type, msg) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 3500);
+  };
   
   // State Data Profil
   const [profile, setProfile] = useState({
@@ -36,7 +43,10 @@ export default function ProfilGuruPage() {
 
   useEffect(() => {
     if (session?.user?.username) {
-      getUserProfile(session.user.username).then((res) => {
+      Promise.all([
+        getUserProfile(session.user.username),
+        getTeacherQuota()
+      ]).then(([res, quotaRes]) => {
         if (res.success && res.profile) {
           setProfile({
             name: res.profile.fullName || "-",
@@ -48,17 +58,20 @@ export default function ProfilGuruPage() {
             school: res.profile.schoolName || "-"
           });
         }
+        if (quotaRes?.success) {
+          setQuota({
+            total: quotaRes.data.quota,
+            type: quotaRes.data.type,
+            validUntil: quotaRes.data.validUntil
+          });
+        }
         setLoading(false);
       });
     }
   }, [session]);
 
-  // State Kuota (Mockup)
-  const quota = {
-    total: 11,
-    type: "Premium",
-    validUntil: "Selamanya"
-  };
+  // State Kuota (Real)
+  const [quota, setQuota] = useState({ total: 0, type: "-", validUntil: "Selamanya" });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,14 +84,21 @@ export default function ProfilGuruPage() {
     const res = await updateUserProfile(session.user.username, profile);
     if (res.success) {
       setIsEditing(false);
-      alert("Perubahan berhasil disimpan!");
+      showToast('success', 'Perubahan berhasil disimpan!');
     } else {
-      alert(res.error || "Gagal menyimpan data.");
+      showToast('error', res.error || 'Gagal menyimpan data.');
     }
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-white text-sm font-semibold transition-all animate-in slide-in-from-top-5
+          ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.type === 'success' ? '✓' : '✕'} {toast.msg}
+        </div>
+      )}
       
       {/* HEADER */}
       <div>

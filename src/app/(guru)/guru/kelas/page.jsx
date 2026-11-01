@@ -23,7 +23,7 @@ import {
   Users,
   Download
 } from "lucide-react";
-import { getClassrooms, saveClassroom, deleteClassroom } from "@/app/actions/guru";
+import { getClassrooms, saveClassroom, deleteClassroom, getStudentsByClassroom } from "@/app/actions/guru";
 
 export default function KelasPage() {
   const [data, setData] = useState([]);
@@ -39,7 +39,8 @@ export default function KelasPage() {
   // --- STATE MODAL DETAIL ---
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [studentList, setStudentList] = useState([]); 
+  const [studentList, setStudentList] = useState([]);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   // --- STATE MODAL DELETE ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -93,20 +94,20 @@ export default function KelasPage() {
     }
   };
 
-  const handleDetailClick = (item) => {
-    if (!item) return; // Safety check
+  const handleDetailClick = async (item) => {
+    if (!item) return;
     setOpenDropdownId(null);
     setSelectedClass(item);
-    
-    // Generate data siswa dummy
-    const mockStudents = Array.from({ length: item.studentCount }, (_, i) => ({
-      nis: `2024${item.id}${String(i + 1).padStart(3, '0')}`,
-      name: `Siswa ${item.name} ${i + 1}`,
-      gender: Math.random() > 0.5 ? 'L' : 'P'
-    }));
-    
-    setStudentList(mockStudents);
+    setStudentList([]);
     setIsDetailOpen(true);
+    setIsDetailLoading(true);
+    const res = await getStudentsByClassroom(item.id);
+    if (res?.success) {
+      setStudentList(res.data);
+    } else {
+      console.error("Gagal memuat siswa:", res?.error);
+    }
+    setIsDetailLoading(false);
   };
 
   const handleDeleteClick = (item) => {
@@ -382,9 +383,11 @@ export default function KelasPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {studentList.length > 0 ? (
+                    {isDetailLoading ? (
+                      <tr><td colSpan="4" className="py-10 text-center text-gray-400"><div className="flex justify-center items-center gap-2"><RefreshCw size={18} className="animate-spin" /><span>Memuat data siswa...</span></div></td></tr>
+                    ) : studentList.length > 0 ? (
                       studentList.map((siswa, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
+                        <tr key={siswa.id ?? idx} className="hover:bg-gray-50">
                           <td className="py-3 px-6 text-sm text-center text-gray-500">{idx + 1}</td>
                           <td className="py-3 px-6 text-sm font-mono text-gray-600">{siswa.nis}</td>
                           <td className="py-3 px-6 text-sm font-bold text-gray-800">{siswa.name}</td>

@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { getDetailedResults } from "@/app/actions/guru";
 import { riasecDescriptions, RIASEC_ORDER } from "@/data/riasecDescriptions";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function AnalisisKelompokPage() {
   const [data, setData] = useState([]);
@@ -96,7 +98,42 @@ export default function AnalisisKelompokPage() {
 
   const handleSelectClass = (e) => {
     setSelectedClass(e.target.value);
-    setActiveCategory(null); // Reset pilihan kategori saat ganti kelas
+    setActiveCategory(null);
+  };
+
+  const handleDownloadPDF = () => {
+    if (!currentData) return;
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Profil Minat Kelas: ${selectedClass}`, 14, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Dicetak pada: ${today}`, 14, 28);
+    doc.text(`Total Siswa: ${currentData.totalStudents}`, 14, 34);
+    doc.text(`Tipe Dominan Kelas: ${currentData.dominantType}`, 14, 40);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Distribusi Minat Siswa", 14, 52);
+
+    autoTable(doc, {
+      startY: 56,
+      head: [["Tipe RIASEC", "Jumlah Siswa", "Persentase", "Nama Siswa"]],
+      body: currentData.distribution.map(d => [
+        d.type,
+        `${d.count} siswa`,
+        `${d.percentage}%`,
+        d.students.join(", ") || "-"
+      ]),
+      headStyles: { fillColor: [37, 99, 235] },
+      styles: { fontSize: 9 },
+    });
+
+    doc.save(`Profil_Minat_${selectedClass.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
   return (
@@ -129,7 +166,7 @@ export default function AnalisisKelompokPage() {
 
           {currentData && (
             <button 
-              onClick={() => alert("Mengunduh laporan kelas...")}
+              onClick={handleDownloadPDF}
               className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-all shadow-md shadow-green-200"
             >
               <Download size={18} />
